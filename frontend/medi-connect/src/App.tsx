@@ -1,12 +1,20 @@
+import React from 'react'
+import {createBrowserRouter , RouterProvider} from 'react-router-dom' 
+import Login from './pages/Login'
 
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Login />
+  }
+])
 
 function App() {
   
 
   return (
-    <>
-      <h1>MediConnect</h1>
-    </>
+    <RouterProvider router={router} />
   )
 }
 
