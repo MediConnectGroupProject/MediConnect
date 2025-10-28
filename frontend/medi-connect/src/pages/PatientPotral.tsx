@@ -5,31 +5,24 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { Input } from "./ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Input } from "../components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import {
   Calendar,
   FileText,
   CreditCard,
-  User,
   Bell,
   Download,
   Home,
   LogOut,
 } from "lucide-react";
-import { Separator } from "./ui/separator";
+import { Separator } from "../components/ui/separator";
 
-export function PatientPortal({ user, onNavigate, onLogout }) {
+export default function PatientPortal() {
   const [activeTab, setActiveTab] = useState("appointments");
-  const [profileForm, setProfileForm] = useState({
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    phone: user.phone || "+1234567890",
-  });
 
   const upcomingAppointments = [
     {
@@ -163,7 +156,7 @@ export function PatientPortal({ user, onNavigate, onLogout }) {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => onNavigate("dashboard")}>
+            <Button variant="ghost">
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
@@ -172,10 +165,10 @@ export function PatientPortal({ user, onNavigate, onLogout }) {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              Welcome, {user.firstName} {user.lastName}
+              Welcome, Abc Def
             </span>
             <Badge variant="secondary">Patient</Badge>
-            <Button variant="ghost" size="sm" onClick={onLogout}>
+            <Button variant="ghost" size="sm">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -463,50 +456,23 @@ export function PatientPortal({ user, onNavigate, onLogout }) {
                     <div>
                       <label className="text-sm font-medium">First Name</label>
                       <Input
-                        value={profileForm.firstName}
-                        onChange={(e) =>
-                          setProfileForm({
-                            ...profileForm,
-                            firstName: e.target.value,
-                          })
-                        }
-                      />
+                        value=""/>
                     </div>
                     <div>
                       <label className="text-sm font-medium">Last Name</label>
                       <Input
-                        value={profileForm.lastName}
-                        onChange={(e) =>
-                          setProfileForm({
-                            ...profileForm,
-                            lastName: e.target.value,
-                          })
-                        }
-                      />
+                        value=""/>
                     </div>
                     <div>
                       <label className="text-sm font-medium">Email</label>
                       <Input
-                        value={profileForm.email}
-                        onChange={(e) =>
-                          setProfileForm({
-                            ...profileForm,
-                            email: e.target.value,
-                          })
-                        }
+                        value=""
                       />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Phone</label>
                       <Input
-                        value={profileForm.phone}
-                        onChange={(e) =>
-                          setProfileForm({
-                            ...profileForm,
-                            phone: e.target.value,
-                          })
-                        }
-                      />
+                        value=""/>
                     </div>
                   </div>
                   <Button>Update Information</Button>
