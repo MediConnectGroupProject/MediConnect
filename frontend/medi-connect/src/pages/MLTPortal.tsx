@@ -8,9 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { FileText, CreditCard, CheckCircle, Clock, Users, TestTube, Download, Home, LogOut, Upload, Search, DollarSign, Receipt, AlertCircle } from 'lucide-react';
 import { Separator } from './ui/separator';
 
-export function MLTPortal({ user, onNavigate, onLogout }) {
+export function MLTPortal() {
   const [activeTab, setActiveTab] = useState('reports');
-  const [searchTerm, setSearchTerm] = useState('');
   const [reportDetails, setReportDetails] = useState('');
 
   const pendingReports = [
@@ -45,21 +44,6 @@ export function MLTPortal({ user, onNavigate, onLogout }) {
     setReportDetails('');
   };
 
-  const handleMarkReady = (reportId) => {
-    // In real app, would mark report as ready
-    console.log('Marking report ready:', reportId);
-  };
-
-  const handleAcceptPayment = (paymentId) => {
-    // In real app, would process payment
-    console.log('Processing payment:', paymentId);
-  };
-
-  const generateInvoice = (patientName) => {
-    // In real app, would generate invoice
-    console.log('Generating invoice for:', patientName);
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
@@ -89,12 +73,12 @@ export function MLTPortal({ user, onNavigate, onLogout }) {
             <Badge variant="secondary">Medical Lab Technician</Badge>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-gray-600">Welcome, {user.firstName}!</span>
-            <Button variant="outline" onClick={() => onNavigate('dashboard')}>
+            <span className="text-gray-600">Welcome, MLT!</span>
+            <Button variant="outline">
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
-            <Button variant="outline" onClick={onLogout}>
+            <Button variant="outline">
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
@@ -180,8 +164,6 @@ export function MLTPortal({ user, onNavigate, onLogout }) {
                       <Search className="h-4 w-4 text-gray-500" />
                       <Input
                         placeholder="Search reports..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
                         className="max-w-sm"
                       />
                     </div>
