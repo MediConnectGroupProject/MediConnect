@@ -7,7 +7,9 @@ import sendEmail from '../utils/sendEmails.js';
 import {
     verificationEmail
 } from '../utils/emailVerifyTemplate.js';
-
+import {
+    getPrimaryRole
+} from '../utils/getPrimaryRole.js';
 
 // User registration
 const register = async (req, res) => {
@@ -56,7 +58,17 @@ const register = async (req, res) => {
             password: hashedPassword,
             isEmailVerified: false,
             emailVerificationToken: hashedVerifyToken,
-            emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+
+            roles: {
+                create: {
+                    role: {
+                        connect: {
+                            name: 'PATIENT'
+                        }
+                    }
+                }
+            }
         }
     });
 
@@ -93,6 +105,13 @@ const login = async (req, res) => {
     const user = await prisma.user.findUnique({
         where: {
             email
+        },
+        include: {
+            roles: {
+                include: {
+                    role: true
+                }
+            }
         }
     });
 
@@ -125,7 +144,10 @@ const login = async (req, res) => {
     // Generate auth token
     const tokenData = {
         id: user.id,
-        role: user.role
+        role: user.roles,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
     };
     const token = generateAuthToken(tokenData, res);
 
@@ -133,8 +155,11 @@ const login = async (req, res) => {
 
         message: 'User logged in successfully',
         user: {
+            id: user.id,
+            email: user.email,
+            roles: user.roles,
             firstName: user.firstName,
-            lastName: user.lastName,
+            lastName: user.lastName
         }
     });
 };
@@ -145,7 +170,7 @@ const logout = async (req, res) => {
     res.cookie('mediconnect', '', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         maxAge: new Date(0)
     });
 
@@ -205,10 +230,23 @@ const verifyEmail = async (req, res) => {
     });
 };
 
+const getMe = async (req, res) => {
+    // passport already verified JWT
+    res.json({
+        user: {
+            id: req.user.id,
+            email: req.user.email,
+            roles: req.user.roles,
+            name: req.user.firstName + ' ' + req.user.lastName,
+            primaryRole: getPrimaryRole(req.user.roles),
+        },
+    });
+};
 
 export {
     login,
     register,
     logout,
-    verifyEmail
+    verifyEmail,
+    getMe,
 };
