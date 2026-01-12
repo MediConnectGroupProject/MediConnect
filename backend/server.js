@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from "cors";
 
 import { errorHandler } from './middleware/errorHandlerMiddleware.js';
+import cookieParser from "cookie-parser";
 import passport from './config/passport.js';
 
 // import routes here ....
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use(express.urlencoded({
   extended: true
 }));
+app.use(cookieParser()); 
 app.use(passport.initialize());
 
 // use routes here ...
