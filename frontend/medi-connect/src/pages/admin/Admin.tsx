@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Input } from '../components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Switch } from '../components/ui/switch';
-import {  Shield,  Search, Plus, Home, LogOut } from 'lucide-react';
-import { Separator } from '../components/ui/separator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Switch } from '../../components/ui/switch';
+import { Shield, Search, Plus, Home, LogOut } from 'lucide-react';
+import { Separator } from '../../components/ui/separator';
 
 export function AdminPortal() {
   const [activeTab, setActiveTab] = useState('users');
-  
- const users = [
+
+  const users = [
     { id: 1, name: 'Dr. Sarah Johnson', email: 'sarah.johnson@mediconnect.com', role: 'doctor', status: 'active', lastLogin: '2024-01-15 09:30', permissions: 'full' },
     { id: 2, name: 'Mike Pharmacist', email: 'mike.p@mediconnect.com', role: 'pharmacist', status: 'active', lastLogin: '2024-01-15 08:45', permissions: 'standard' },
     { id: 3, name: 'John Patient', email: 'john.patient@email.com', role: 'patient', status: 'active', lastLogin: '2024-01-14 16:20', permissions: 'basic' },
@@ -29,7 +29,7 @@ export function AdminPortal() {
     { id: 1, category: 'General', setting: 'Platform Name', value: 'MediConnect', type: 'text' },
     { id: 2, category: 'Security', setting: 'Two-Factor Authentication', value: true, type: 'boolean' },
     { id: 3, category: 'Security', setting: 'Session Timeout (minutes)', value: '30', type: 'number' },
-    { id: 4, category: 'Notifications', setting: 'Email Notifications', value: true, type: 'boolean' },
+    { id: 4, category: 'N1otifications', setting: 'Email Notifications', value: true, type: 'boolean' },
     { id: 5, category: 'Notifications', setting: 'SMS Notifications', value: false, type: 'boolean' },
     { id: 6, category: 'Data', setting: 'Data Retention (days)', value: '365', type: 'number' },
     { id: 7, category: 'Backup', setting: 'Automatic Backups', value: true, type: 'boolean' },
@@ -114,8 +114,8 @@ export function AdminPortal() {
                           <h3 className="font-medium">{user.name}</h3>
                           <Badge variant={
                             user.role === 'admin' ? 'destructive' :
-                            user.role === 'doctor' ? 'default' :
-                            user.role === 'pharmacist' ? 'secondary' : 'outline'
+                              user.role === 'doctor' ? 'default' :
+                                user.role === 'pharmacist' ? 'secondary' : 'outline'
                           }>
                             {user.role}
                           </Badge>
@@ -161,7 +161,7 @@ export function AdminPortal() {
                           <h3 className="font-medium">{approval.name}</h3>
                           <Badge variant={
                             approval.type === 'doctor_registration' ? 'default' :
-                            approval.type === 'pharmacist_registration' ? 'secondary' : 'outline'
+                              approval.type === 'pharmacist_registration' ? 'secondary' : 'outline'
                           }>
                             {approval.type.replace('_', ' ')}
                           </Badge>
@@ -220,7 +220,7 @@ export function AdminPortal() {
                             ) : setting.type === 'number' ? (
                               <Input type="number" className="w-24" />
                             ) : (
-                              <Input  className="w-48" />
+                              <Input className="w-48" />
                             )}
                           </div>
                         </div>
@@ -280,9 +280,8 @@ export function AdminPortal() {
                     {securityLogs.map((log) => (
                       <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center gap-4">
-                          <Shield className={`h-5 w-5 ${
-                            log.status === 'success' ? 'text-green-500' : 'text-red-500'
-                          }`} />
+                          <Shield className={`h-5 w-5 ${log.status === 'success' ? 'text-green-500' : 'text-red-500'
+                            }`} />
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="font-medium">{log.event}</h3>
