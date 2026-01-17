@@ -6,8 +6,19 @@ import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Calendar, Search, QrCode, Home, LogOut } from 'lucide-react';
 import { Separator } from '../../components/ui/separator';
+import { useNavigate } from 'react-router-dom';
+import { RouteNames } from '../../utils/RouteNames';
+import { useAuth } from '../../utils/authContext';
 
 export default function DoctorPortal() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+
+  const handleDashboardNavigation = () => {
+     navigate(`${RouteNames.DASHBOARD}/doctor`);
+  };
+
   const [activeTab, setActiveTab] = useState('schedule');
 
   const todaysSchedule = [
@@ -48,19 +59,25 @@ export default function DoctorPortal() {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="ghost">
+            <Button variant="outline" onClick={handleDashboardNavigation}>
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
+
+
             <Separator orientation="vertical" className="h-6" />
             <h1 className="text-xl font-semibold">Doctor Portal</h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">Dr. Abc Def</span>
             <Badge variant="secondary">Doctor</Badge>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => {
+              logout();
+              navigate(RouteNames.LOGIN);
+            }}>
               <LogOut className="h-4 w-4" />
             </Button>
+
           </div>
         </div>
       </div>

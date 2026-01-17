@@ -74,13 +74,16 @@ const router = createBrowserRouter([
   },
 ])
 
+import { AuthProvider } from './utils/authContext'
+
 function App() {
 
   return (
-    <>
+    <AuthProvider>
       <RouterProvider router={router} />
-    </>
+    </AuthProvider>
   )
 }
+
 
 export default App

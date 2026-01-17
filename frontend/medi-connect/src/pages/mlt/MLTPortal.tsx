@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { FileText, CreditCard, CheckCircle, Clock, Users, TestTube, Download, Home, LogOut, Upload, Search, DollarSign, Receipt, AlertCircle } from 'lucide-react';
+import { FileText, CreditCard, CheckCircle, TestTube, Download, Home, LogOut, Upload, Search, DollarSign, Receipt, AlertCircle } from 'lucide-react';
+
+
+import { useNavigate } from 'react-router-dom';
+import { RouteNames } from '../../utils/RouteNames';
+import { useAuth } from '../../utils/authContext';
+
 
 export function MLTPortal() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
   const [activeTab, setActiveTab] = useState('reports');
+
   const [reportDetails, setReportDetails] = useState('');
 
   const pendingReports = [
@@ -37,13 +47,25 @@ export function MLTPortal() {
     { id: 3, patient: 'Tom Anderson', testType: 'Lipid Panel', completedDate: '2024-01-08', results: 'Normal', doctor: 'Dr. Mike Chen' }
   ];
 
-  const handleUpdateReport = (reportId) => {
+  const handleUpdateReport = (reportId: number) => {
     // In real app, would update report in database
     console.log('Updating report:', reportId, 'Details:', reportDetails);
     setReportDetails('');
   };
 
-  const getStatusColor = (status) => {
+  const handleMarkReady = (reportId: number) => {
+    console.log('Marking report as ready:', reportId);
+  };
+
+  const handleAcceptPayment = (paymentId: number) => {
+    console.log('Accepting payment:', paymentId);
+  };
+
+  const generateInvoice = (patientName: string) => {
+    console.log('Generating invoice for:', patientName);
+  };
+
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
       case 'ready': return 'bg-blue-100 text-blue-800';
@@ -54,13 +76,14 @@ export function MLTPortal() {
     }
   };
 
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'urgent': return 'bg-red-100 text-red-800';
       case 'normal': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -73,14 +96,19 @@ export function MLTPortal() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-gray-600">Welcome, MLT!</span>
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/mlt`)}>
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
-            <Button variant="outline">
+
+            <Button variant="outline" onClick={() => {
+              logout();
+              navigate(RouteNames.LOGIN);
+            }}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
+
           </div>
         </div>
       </div>

@@ -8,6 +8,9 @@ import { useNavigate } from 'react-router-dom';
 import { GetPrimaryRole } from '../utils/GetPrimaryRole';
 import { RouteNames } from '../utils/RouteNames';
 import { useAuth } from '../utils/authContext';
+import { MockApi } from '../services/mockApi';
+
+
 
 export default function Login() {
 
@@ -43,48 +46,44 @@ export default function Login() {
     setLoginError({});
 
     try {
+      // MOCK MODE
+      const user = await MockApi.login(email);
+      // const res = await fetch(
+      //   `${API_URL}/login`,
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json"
+      //     },
+      //     credentials: "include",
+      //     body: JSON.stringify({ email, password })
+      //   }
+      // );
 
-      const res = await fetch(
+      // const data = await res.json();
 
-        `${API_URL}/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include",
-          body: JSON.stringify({ email, password })
-        }
-      );
+      // if (!res.ok) {
+      //   if (data.errors) {
+      //     setLoginError(data.errors);
+      //     return;
+      //   }
+      //   throw new Error(data.message || data.errors || "Login failed");
+      // }
 
-      const data = await res.json();
+      // const roles: string[] = data.user.roles?.map(r => r.role.name);
+      // const primaryRole = GetPrimaryRole(roles);
+      // const user = {
+      //   id: data.user.id,
+      //   email: data.user.email,
+      //   roles: roles,
+      //   name: data.user.firstName + " " + data.user.lastName,
+      //   primaryRole: primaryRole
+      // };
 
-      if (!res.ok) {
+      setUser(user as any); // Cast for compatibility if needed or check types
+      localStorage.setItem("user", JSON.stringify(user));
 
-        if (data.errors) {
-
-          setLoginError(data.errors);
-          return;
-        }
-
-        throw new Error(data.message || data.errors || "Login failed");
-      }
-
-      const roles: string[] = data.user.roles?.map(r => r.role.name);
-      console.log(data.user);
-      const primaryRole = GetPrimaryRole(roles);
-      const user = {
-
-        id: data.user.id,
-        email: data.user.email,
-        roles: roles,
-        name: data.user.firstName + " " + data.user.lastName,
-        primaryRole: primaryRole
-      };
-
-      setUser(user);
-
-      switch (primaryRole) {
+      switch (user.primaryRole) {
 
         case "ADMIN":
           navigate(`${RouteNames.DASHBOARD}/admin`);

@@ -21,8 +21,17 @@ import {
 } from "lucide-react";
 import { Separator } from "../../components/ui/separator";
 
+import { useNavigate } from 'react-router-dom';
+import { RouteNames } from '../../utils/RouteNames';
+import { useAuth } from '../../utils/authContext';
+
+
 export default function PatientPortal() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
   const [activeTab, setActiveTab] = useState("appointments");
+
 
   const upcomingAppointments = [
     {
@@ -156,21 +165,28 @@ export default function PatientPortal() {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="ghost">
+            <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/patient`)}>
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
+
+
             <Separator orientation="vertical" className="h-6" />
             <h1 className="text-xl font-semibold">Patient Portal</h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              Welcome, Abc Def
+              Welcome, {user?.name || 'Patient'}
             </span>
+
             <Badge variant="secondary">Patient</Badge>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => {
+              logout();
+              navigate(RouteNames.LOGIN);
+            }}>
               <LogOut className="h-4 w-4" />
             </Button>
+
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 
+import { UserManagement, SystemStats } from './UserManagement';
 
 export default function AdminDashboard() {
 

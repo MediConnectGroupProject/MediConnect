@@ -8,8 +8,23 @@ import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Calendar, CreditCard, CheckCircle, XCircle, Users, FileText, Home, LogOut, Clock, Search, DollarSign, Receipt } from 'lucide-react';
 
+import { useNavigate } from 'react-router-dom';
+import { RouteNames } from '../../utils/RouteNames';
+import { useAuth } from '../../utils/authContext';
+
 export function ReceptionistPortal() {
+    const navigate = useNavigate();
+    const { user, logout } = useAuth();
+
+    
+    const onLogout = () => {
+        logout();
+        navigate(RouteNames.LOGIN);
+    };
+
+
     const [activeTab, setActiveTab] = useState('appointments');
+
     const [searchTerm, setSearchTerm] = useState('');
 
     const todayAppointments = [
@@ -72,11 +87,13 @@ export function ReceptionistPortal() {
                         <Badge variant="secondary">Receptionist</Badge>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="text-gray-600">Welcome, {user.firstName}!</span>
-                        <Button variant="outline" onClick={() => onNavigate('dashboard')}>
+                        <span className="text-gray-600">Welcome, {user?.name}!</span>
+
+                        <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/receptionist`)}>
                             <Home className="h-4 w-4 mr-2" />
                             Dashboard
                         </Button>
+
                         <Button variant="outline" onClick={onLogout}>
                             <LogOut className="h-4 w-4 mr-2" />
                             Logout

@@ -9,8 +9,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { QrCode, Package, AlertTriangle, DollarSign, Scan, Home, LogOut, Search } from 'lucide-react';
 import { Separator } from '../../components/ui/separator';
 
+import { useNavigate } from 'react-router-dom';
+import { RouteNames } from '../../utils/RouteNames';
+import { useAuth } from '../../utils/authContext';
+
 export function PharmacistPortal() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
   const [activeTab, setActiveTab] = useState('prescriptions');
+  
+  const onLogout = () => {
+    logout();
+    navigate(RouteNames.LOGIN);
+  };
+
+
 
   const prescriptionRequests = [
     { id: 1, patient: 'John Smith', doctor: 'Dr. Sarah Johnson', medication: 'Lisinopril 10mg', quantity: '30 tablets', status: 'pending', qrCode: 'QR123456', submittedAt: '2024-01-15 09:30' },
@@ -52,16 +66,19 @@ export function PharmacistPortal() {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => onNavigate('dashboard')}>
+            <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/pharmacist`)}>
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
+
+
             <Separator orientation="vertical" className="h-6" />
             <h1 className="text-xl font-semibold">Pharmacist Portal</h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">{user.firstName} {user.lastName}</span>
+            <span className="text-sm text-gray-600">{user?.name}</span>
             <Badge variant="secondary">Pharmacist</Badge>
+
             <Button variant="ghost" size="sm" onClick={onLogout}>
               <LogOut className="h-4 w-4" />
             </Button>

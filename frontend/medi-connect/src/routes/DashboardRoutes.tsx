@@ -2,7 +2,8 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import DoctorDashboard from "../pages/doctor/DoctorDashboard";
 import MLTDashboard from "../pages/mlt/MLTDashboard";
 import PatientDashboard from "../pages/patient/PatientDashboard";
-import PharmacistDashboard from "../pages/pharmacist/PharmacistDasboard";
+import PharmacistDashboard from "../pages/pharmacist/PharmacistDashboard";
+
 import ReceptionistDashboard from "../pages/receptionist/Receptionistdasboard";
 
 export const DashboardRoutes = [

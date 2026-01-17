@@ -1,5 +1,7 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
+import { RouteNames } from '../utils/RouteNames';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -8,6 +10,9 @@ import { Calendar, Users, Activity, FileText, PlusCircle, Bell, TestTube, Dollar
 import { useAuth } from '../utils/authContext';
 
 export function DashboardLayout() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   // const getDashboardContent = () => {
   //   switch (user.role) {
   //     case 'patient':
@@ -44,7 +49,6 @@ export function DashboardLayout() {
   //           }
   //         ]
   //       };
-
   //     case 'pharmacist':
   //       return {
   //         title: 'Pharmacist Dashboard',
@@ -188,7 +192,33 @@ export function DashboardLayout() {
 
   // const { title, cards } = getDashboardContent();
 
-  const { user } = useAuth();
+  const handlePortalNavigation = () => {
+    if (!user) return;
+    
+    switch(user.primaryRole) {
+        case 'DOCTOR': 
+          navigate(RouteNames.DOCTOR_PORTAL); 
+          break;
+        case 'PATIENT': 
+          navigate(RouteNames.PATIENT_PORTAL); 
+          break;
+        case 'ADMIN': 
+          navigate(RouteNames.ADMIN_PORTAL); 
+          break;
+        case 'PHARMACIST': 
+          navigate(RouteNames.PHARMACIST_PORTAL); 
+          break;
+        case 'MLT': 
+          navigate(RouteNames.MLT_PORTAL); 
+          break;
+        case 'RECEPTIONIST': 
+          navigate(RouteNames.RECEPTIONIST_PORTAL); 
+          break;
+        default: 
+          navigate(RouteNames.PATIENT_PORTAL);
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -200,14 +230,16 @@ export function DashboardLayout() {
           </div>
           <div className="flex items-center gap-4">
             <Badge variant="secondary" className="capitalize">
-              
+              {user?.primaryRole || 'User'}
             </Badge>
             <Button 
               variant="outline"
               className="font-bold"
+              onClick={handlePortalNavigation}
             >
               Go to Portal
             </Button>
+
           </div>
         </div>
 
