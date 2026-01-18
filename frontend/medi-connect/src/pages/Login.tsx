@@ -194,8 +194,8 @@ export default function Login() {
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+                <TabsTrigger className='cursor-pointer' value="login">Login</TabsTrigger>
+                <TabsTrigger className='cursor-pointer' value="register">Register</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login" className="space-y-4">
@@ -214,7 +214,7 @@ export default function Login() {
                       placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                    // required
+                      required
                     />
                     {loginError.email && <p className="text-red-500 text-sm">{loginError.email}</p>}
                   </div>
@@ -226,11 +226,11 @@ export default function Login() {
                       placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                    // required
+                      required
                     />
                     {loginError.password && <p className="text-red-500 text-sm">{loginError.password}</p>}
                   </div>
-                  <Button disabled={loading} type="submit" className="w-full text-[rgba(255,255,255,1)] bg-[#376BFF] hover:bg-transparent hover:border hover:border-[#1C398E] hover:text-[#1C398E] hover:font-bold">
+                  <Button disabled={loading} type="submit" className="w-full cursor-pointer text-[rgba(255,255,255,1)] bg-[#376BFF] hover:bg-transparent hover:border hover:border-[#1C398E] hover:text-[#1C398E] hover:font-bold">
                     {loading ? 'Logging in...' : 'Login'}
                   </Button>
                 </form>
@@ -340,7 +340,7 @@ export default function Login() {
                     />
                   </div>
 
-                  <Button disabled={loading} type="submit" className="w-full">
+                  <Button disabled={loading} type="submit" className="w-full cursor-pointer">
                     {loading ? 'Registering...' : 'Register'}
                   </Button>
                 </form>

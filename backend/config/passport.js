@@ -1,5 +1,7 @@
 import passport from 'passport';
-import { Strategy as JwtStrategy } from 'passport-jwt';
+import {
+  Strategy as JwtStrategy
+} from 'passport-jwt';
 import prisma from './connection.js';
 
 const cookieExtractor = (req) => {
@@ -11,19 +13,27 @@ const cookieExtractor = (req) => {
 };
 
 passport.use(
-  new JwtStrategy(
-    {
+  new JwtStrategy({
       jwtFromRequest: cookieExtractor,
       secretOrKey: process.env.JWT_SECRET,
     },
     async (payload, done) => {
       try {
         // payload = { id, roles }
-        const user = await prisma.user.findUnique({
-          where: { id: payload.id },
+        const user = await prisma.user.findFirst({
+          where: {
+            id: payload.id,
+            status: 'ACTIVE',
+            isEmailVerified: true
+          },
           include: {
             roles: {
-              include: { role: true },
+              where: {
+                status: 'ACTIVE'
+              },
+              include: {
+                role: true
+              },
             },
           },
         });

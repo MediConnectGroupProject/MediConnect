@@ -1,5 +1,5 @@
 
-const requireRole = (allowedRoles = []) => {
+export const requireRole = (allowedRoles = []) => {
 
 
     return (req, res, next) => {
