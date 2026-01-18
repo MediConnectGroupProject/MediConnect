@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Calendar, Home, LogOut, CheckCircle, Undo, Plus, QrCode } from 'lucide-react';
+import { Calendar, Home, LogOut, CheckCircle, Undo, Plus, QrCode, User } from 'lucide-react';
 import { Separator } from '../../components/ui/separator';
 import { useNavigate } from 'react-router-dom';
 import { RouteNames } from '../../utils/RouteNames';
@@ -138,6 +138,9 @@ export default function DoctorPortal() {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">Dr. Abc Def</span>
             <Badge variant="secondary">Doctor</Badge>
+            <Button variant="ghost" size="sm" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+              <User className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => {
               logout();
               navigate(RouteNames.LOGIN);

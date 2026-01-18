@@ -27,6 +27,8 @@ interface UserProfileData {
   licenseNumber?: string;
   department?: string; // For Doctor
   specialization?: string; // For Doctor
+  bio?: string; // NEW
+  qualifications?: string; // NEW
   pharmacySection?: string; // For Pharmacist
   labSection?: string; // For MLT
   joinedDate?: string;
@@ -38,9 +40,10 @@ interface UserProfileProps {
   readOnly?: boolean;
   onEdit?: (data: UserProfileData) => void;
   role?: 'patient' | 'doctor' | 'pharmacist' | 'mlt' | 'admin' | 'receptionist'; // Override role for display context if needed
+  isMe?: boolean; // NEW: If true, uses userApi for fetch/update "me"
 }
 
-export function UserProfile({ userId, initialData, readOnly = false, onEdit, role }: UserProfileProps) {
+export function UserProfile({ userId, initialData, readOnly = false, onEdit, role, isMe = false }: UserProfileProps) {
     // Mock data if no initialData provided
     const defaultData: UserProfileData = {
         id: userId || 'u_dummy',
@@ -51,9 +54,9 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
         age: 34,
         gender: 'Male',
         bloodType: 'O+',
-        allergies: ['Penicillin', 'Peanuts'],
-        medications: ['Lisinopril 10mg', 'Vitamin D3'],
-        conditions: ['Hypertension'],
+        allergies: [],
+        medications: [],
+        conditions: [],
         specialization: 'General Practice',
         licenseNumber: 'DOC-12345',
         department: 'Cardiology'
@@ -61,19 +64,33 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
 
     const [data, setData] = useState<UserProfileData>(initialData || defaultData);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    // Fetch data if userId provided and no initialData
+    // Fetch data logic
     useEffect(() => {
-        if (userId && !initialData && !userId.startsWith('u_dummy')) {
+        const shouldFetch = isMe || (userId && !initialData && !userId.startsWith('u_dummy'));
+        
+        if (shouldFetch) {
              const fetchUser = async () => {
                  setLoading(true);
                  try {
                      let fetchedData = null;
-                     const api = await import('../api/doctorApi');
-                     fetchedData = await api.getPatient(userId);
+                     
+                     if (isMe) {
+                         const api = await import('../api/userApi');
+                         fetchedData = await api.getProfile();
+                     } else if (userId) {
+                         // Viewing another user (e.g. Doctor viewing Patient)
+                         // Currently assumes Doctor viewing Patient via doctorApi
+                         // TODO: Make this more robust for Admin viewing others
+                         try {
+                            const api = await import('../api/doctorApi');
+                            fetchedData = await api.getPatient(userId);
+                         } catch (e) { console.warn("DoctorAPI fetch failed", e); }
+                     }
                      
                      if (fetchedData) {
-                         // Ensure we default missing array fields to empty arrays to avoid map errors
+                         // Default array fields
                          setData({
                              ...fetchedData,
                              allergies: fetchedData.allergies || [],
@@ -83,13 +100,14 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                      }
                  } catch (e) {
                      console.error("Failed to fetch user profile", e);
+                     setError("Failed to load profile.");
                  } finally {
                      setLoading(false);
                  }
              };
              fetchUser();
         }
-    }, [userId]); // Removed initialData from dep array to avoid loops if reference changes, though usually fine.
+    }, [userId, isMe, initialData]);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState<UserProfileData>(data);
@@ -107,11 +125,24 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
         setEditForm(data);
     }, [data]);
 
-
-    const handleSave = () => {
-        setData(editForm);
-        setIsEditing(false);
-        if (onEdit) onEdit(editForm);
+    const handleSave = async () => {
+        if (isMe) {
+             try {
+                 const api = await import('../api/userApi');
+                 await api.updateProfile(editForm);
+                 setData(editForm);
+                 setIsEditing(false);
+                 // Optional: Toast success
+             } catch (e) {
+                 console.error("Failed to update profile", e);
+                 // Optional: Toast error
+             }
+        } else {
+            // Local save (parent handles persistence via onEdit if provided)
+            setData(editForm);
+            setIsEditing(false);
+            if (onEdit) onEdit(editForm);
+        }
     };
 
     const handleCancel = () => {
@@ -119,7 +150,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
         setIsEditing(false);
     };
 
-    if (isEditing && !readOnly) {
+    if (isEditing && (!readOnly || isMe)) {
         return (
             <Card>
                 <CardHeader>
@@ -127,34 +158,37 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-12 gap-4">
+                         {/* Common Fields */}
                         <div className="col-span-12 md:col-span-6 space-y-2">
                              <Label>Name</Label>
                              <Input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
                         </div>
                         <div className="col-span-12 md:col-span-6 space-y-2">
+                             {/* Email often read-only for security, but making editable for now */}
                              <Label>Email</Label>
-                             <Input value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
+                             <Input value={editForm.email} disabled className="bg-gray-100 cursor-not-allowed" title="Contact admin to change email" />
                         </div>
                          <div className="col-span-12 md:col-span-4 space-y-2">
                              <Label>Phone</Label>
                              <Input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                         </div>
-                        <div className="col-span-6 md:col-span-2 space-y-2">
-                            <Label>Age</Label>
-                            <Input type="number" value={editForm.age} onChange={e => setEditForm({...editForm, age: parseInt(e.target.value)})} />
-                        </div>
-                        <div className="col-span-6 md:col-span-3 space-y-2">
-                            <Label>Gender</Label>
-                            <Input value={editForm.gender} onChange={e => setEditForm({...editForm, gender: e.target.value})} />
-                        </div>
-                        <div className="col-span-6 md:col-span-3 space-y-2">
-                            <Label>Blood Type</Label>
-                            <Input value={editForm.bloodType} onChange={e => setEditForm({...editForm, bloodType: e.target.value})} />
-                        </div>
-                        
-                        {/* Role Specific Edit Fields */}
+
+                        {/* Patient Specific */}
                         {editForm.role === 'patient' && (
                             <>
+                                <div className="col-span-6 md:col-span-2 space-y-2">
+                                    <Label>Age</Label>
+                                    <Input type="number" value={editForm.age} onChange={e => setEditForm({...editForm, age: parseInt(e.target.value)})} />
+                                </div>
+                                <div className="col-span-6 md:col-span-3 space-y-2">
+                                    <Label>Gender</Label>
+                                    <Input value={editForm.gender} onChange={e => setEditForm({...editForm, gender: e.target.value})} />
+                                </div>
+                                <div className="col-span-6 md:col-span-3 space-y-2">
+                                    <Label>Blood Type</Label>
+                                    <Input value={editForm.bloodType || ''} onChange={e => setEditForm({...editForm, bloodType: e.target.value})} placeholder="e.g. O+" />
+                                </div>
+
                                 <div className="col-span-12 space-y-2">
                                     <Label>Allergies (comma separated)</Label>
                                     <Input value={(editForm.allergies || []).join(', ')} onChange={e => setEditForm({...editForm, allergies: e.target.value.split(',').map(s => s.trim())})} />
@@ -166,34 +200,40 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                             </>
                         )}
                         
-                        {(editForm.role === 'doctor' || editForm.role === 'pharmacist' || editForm.role === 'mlt') && (
+                        {/* Staff Specific */}
+                        {['doctor', 'pharmacist', 'mlt'].includes(editForm.role?.toLowerCase()) && (
                             <div className="col-span-12 md:col-span-6 space-y-2">
                                 <Label>License Number</Label>
                                 <Input value={editForm.licenseNumber || ''} onChange={e => setEditForm({...editForm, licenseNumber: e.target.value})} />
                             </div>
                         )}
 
-                        {editForm.role === 'doctor' && (
+                        {editForm.role?.toLowerCase() === 'doctor' && (
                            <>
                              <div className="col-span-12 md:col-span-6 space-y-2">
                                 <Label>Specialization</Label>
                                 <Input value={editForm.specialization || ''} onChange={e => setEditForm({...editForm, specialization: e.target.value})} />
                              </div>
-                             <div className="col-span-12 md:col-span-6 space-y-2">
-                                <Label>Department</Label>
-                                <Input value={editForm.department || ''} onChange={e => setEditForm({...editForm, department: e.target.value})} />
+                             <div className="col-span-12 space-y-2">
+                                <Label>Qualifications</Label>
+                                <Input value={editForm.qualifications || ''} onChange={e => setEditForm({...editForm, qualifications: e.target.value})} placeholder="MBBS, MD, etc." />
+                             </div>
+                             <div className="col-span-12 space-y-2">
+                                <Label>Bio</Label>
+                                <Input value={editForm.bio || ''} onChange={e => setEditForm({...editForm, bio: e.target.value})} placeholder="Short professional biography..." />
                              </div>
                            </>
                         )}
                         
-                        {editForm.role === 'pharmacist' && (
+                        {/* Ensure other roles preserve their view */}
+                        {editForm.role?.toLowerCase() === 'pharmacist' && (
                              <div className="col-span-12 md:col-span-6 space-y-2">
                                 <Label>Pharmacy Section</Label>
                                 <Input value={editForm.pharmacySection || ''} onChange={e => setEditForm({...editForm, pharmacySection: e.target.value})} />
                              </div>
                         )}
                          
-                         {editForm.role === 'mlt' && (
+                         {editForm.role?.toLowerCase() === 'mlt' && (
                              <div className="col-span-12 md:col-span-6 space-y-2">
                                 <Label>Lab Section</Label>
                                 <Input value={editForm.labSection || ''} onChange={e => setEditForm({...editForm, labSection: e.target.value})} />
@@ -213,10 +253,14 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
         <div className="space-y-6">
             <Card>
                 <CardHeader>
-                    {loading ? <div className="p-4 text-center">Loading profile...</div> : (
+                    {loading ? <div className="p-4 text-center">Loading profile...</div> : 
+                     error ? <div className="p-4 text-center text-red-500">{error}</div> : (
                      <CardContent className="p-0 flex flex-col md:flex-row items-center gap-6">
-                        <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                            <User className="h-12 w-12" />
+                        <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl font-bold">
+                            {data.name ? 
+                                data.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+                                : <User className="h-12 w-12" />
+                            }
                         </div>
                         <div className="text-center md:text-left flex-1">
                             <div className="flex flex-col md:flex-row items-center gap-2 mb-2">
@@ -249,7 +293,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                                 )}
                             </div>
                         </div>
-                        {!readOnly && (
+                        {(!readOnly || isMe) && (
                             <Button variant="outline" onClick={() => setIsEditing(true)}>
                                 <Edit className="h-4 w-4 mr-2" /> Edit Profile
                             </Button>
@@ -355,6 +399,14 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                                 <div>
                                      <p className="text-sm font-medium text-gray-500">Department</p>
                                      <p className="font-semibold">{data.department || 'General'}</p>
+                                </div>
+                                <div className="col-span-2">
+                                     <p className="text-sm font-medium text-gray-500">Qualifications</p>
+                                     <p className="font-semibold">{data.qualifications || 'N/A'}</p>
+                                </div>
+                                <div className="col-span-2">
+                                     <p className="text-sm font-medium text-gray-500">Bio</p>
+                                     <p className="text-gray-700 text-sm italic">{data.bio || 'No biography provided.'}</p>
                                 </div>
                              </>
                         )}

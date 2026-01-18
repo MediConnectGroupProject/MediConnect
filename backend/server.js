@@ -9,6 +9,11 @@ import passport from './config/passport.js';
 // import routes here ....
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import doctorRoutes from './routes/doctorRoutes.js';
+import patientRoutes from './routes/patientRoutes.js';
+import pharmacistRoutes from './routes/pharmacistRoutes.js';
+import mltRoutes from './routes/mltRoutes.js';
+import receptionistRoutes from './routes/receptionistRoutes.js';
 
 
 
@@ -34,6 +39,11 @@ app.use(passport.initialize());
 // use routes here ...
 app.use('/api/auth', authRoutes);
 app.use('/api', adminRoutes);
+app.use('/api/doctor', doctorRoutes);
+app.use('/api/patient', patientRoutes);
+app.use('/api/pharmacist', pharmacistRoutes);
+app.use('/api/mlt', mltRoutes);
+app.use('/api/receptionist', receptionistRoutes);
 
 
 app.use(errorHandler);

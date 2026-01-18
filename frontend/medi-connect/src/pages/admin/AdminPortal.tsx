@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Search, Home, LogOut } from 'lucide-react';
+import { Search, Home, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { RouteNames } from '../../utils/RouteNames';
 import { addRoleMutation, allRoles, allUsers, updateRoleMutation, updateUserStateMutation } from '../../hooks/adminUsers';
@@ -125,6 +125,9 @@ export function AdminPortal() {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">Administrator</span>
             <Badge variant="destructive">Admin</Badge>
+            <Button variant="ghost" size="sm" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+              <User className="h-4 w-4" />
+            </Button>
             {/* Logout handled by hook or auth context, reusing logic from other portals */}
              <Button variant="ghost" size="sm" onClick={() => {
                  // Assuming logout is available or we import useAuth

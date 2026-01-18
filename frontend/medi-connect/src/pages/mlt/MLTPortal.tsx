@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { FileText, CreditCard, CheckCircle, TestTube, Download, Home, LogOut, Upload, Search, DollarSign, Receipt, AlertCircle } from 'lucide-react';
+import { FileText, CreditCard, CheckCircle, TestTube, Download, Home, LogOut, Upload, Search, DollarSign, Receipt, AlertCircle, User } from 'lucide-react';
 
 
 import { useNavigate } from 'react-router-dom';
@@ -127,6 +127,11 @@ export function MLTPortal() {
             <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/mlt`)}>
               <Home className="h-4 w-4 mr-2" />
               Dashboard
+            </Button>
+
+            <Button variant="outline" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+              <User className="h-4 w-4 mr-2" />
+              Profile
             </Button>
 
             <Button variant="outline" onClick={() => {

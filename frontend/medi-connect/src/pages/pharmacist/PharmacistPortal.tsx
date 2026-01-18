@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { QrCode, AlertTriangle, Scan, Home, LogOut, Search } from 'lucide-react';
+import { QrCode, AlertTriangle, Scan, Home, LogOut, Search, User } from 'lucide-react';
 import { Separator } from '../../components/ui/separator';
 import { useNavigate } from 'react-router-dom';
 import { RouteNames } from '../../utils/RouteNames';
@@ -94,6 +94,9 @@ export function PharmacistPortal() {
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">{user?.name}</span>
             <Badge variant="secondary">Pharmacist</Badge>
+            <Button variant="ghost" size="sm" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+              <User className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="sm" onClick={onLogout}>
               <LogOut className="h-4 w-4" />
             </Button>

@@ -18,6 +18,7 @@ import {
   Download,
   Home,
   LogOut,
+  User,
 } from "lucide-react";
 import { Separator } from "../../components/ui/separator";
 
@@ -126,6 +127,9 @@ export default function PatientPortal() {
             </span>
 
             <Badge variant="secondary">Patient</Badge>
+            <Button variant="ghost" size="sm" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+              <User className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => {
               logout();
               navigate(RouteNames.LOGIN);
@@ -408,7 +412,7 @@ export default function PatientPortal() {
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-6">
             <h2 className="text-2xl font-semibold">Profile & Settings</h2>
-            <UserProfile readOnly={false} />
+            <UserProfile isMe={true} role="patient" />
           </TabsContent>
 
         </Tabs>

@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/input';
 
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Calendar, CreditCard, CheckCircle, XCircle, Users, FileText, Home, LogOut, Clock, Search, DollarSign, Receipt } from 'lucide-react';
+import { Calendar, CreditCard, CheckCircle, XCircle, Users, FileText, Home, LogOut, Clock, Search, DollarSign, Receipt, User } from 'lucide-react';
 
 import { useNavigate } from 'react-router-dom';
 import { RouteNames } from '../../utils/RouteNames';
@@ -116,6 +116,11 @@ export function ReceptionistPortal() {
                         <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/receptionist`)}>
                             <Home className="h-4 w-4 mr-2" />
                             Dashboard
+                        </Button>
+
+                        <Button variant="outline" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+                            <User className="h-4 w-4 mr-2" />
+                            Profile
                         </Button>
 
                         <Button variant="outline" onClick={onLogout}>
