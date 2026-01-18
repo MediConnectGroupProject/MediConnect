@@ -82,7 +82,7 @@ const register = async (req, res) => {
     });
 
 
-    res.status(201).json({
+    return res.status(201).json({
         message: 'User registered successfully',
         user: {
             firstName: newUser.firstName,
@@ -102,12 +102,16 @@ const login = async (req, res) => {
     } = req.body;
 
     // check user exists by email
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
         where: {
-            email
+            email: email,
+            status: 'ACTIVE',
         },
         include: {
             roles: {
+                where: {
+                    status: 'ACTIVE'
+                },
                 include: {
                     role: true
                 }
@@ -151,7 +155,7 @@ const login = async (req, res) => {
     };
     const token = generateAuthToken(tokenData, res);
 
-    res.status(200).json({
+    return res.status(200).json({
 
         message: 'User logged in successfully',
         user: {
@@ -174,7 +178,7 @@ const logout = async (req, res) => {
         maxAge: new Date(0)
     });
 
-    res.status(200).json({
+    return res.status(200).json({
 
         message: 'User logged out successfully'
     });
@@ -224,7 +228,7 @@ const verifyEmail = async (req, res) => {
         }
     });
 
-    res.status(200).json({
+    return res.status(200).json({
 
         message: 'Email verified successfully'
     });
@@ -232,7 +236,7 @@ const verifyEmail = async (req, res) => {
 
 const getMe = async (req, res) => {
     // passport already verified JWT
-    res.json({
+    return res.json({
         user: {
             id: req.user.id,
             email: req.user.email,

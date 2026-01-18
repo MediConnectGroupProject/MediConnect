@@ -1,0 +1,30 @@
+src/App.tsx(6,1): error TS6133: 'DoctorPortal' is declared but its value is never read.
+src/App.tsx(7,1): error TS6133: 'PatientPortal' is declared but its value is never read.
+src/App.tsx(81,1): error TS6133: 'AuthProvider' is declared but its value is never read.
+src/guards/PublicRoute.tsx(6,63): error TS2503: Cannot find namespace 'JSX'.
+src/guards/RoleGuard.tsx(22,67): error TS2345: Argument of type 'string' is not assignable to parameter of type 'Role'.
+src/hooks/adminUsers.tsx(37,9): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(options: DefinedInitialDataOptions<unknown, Error, unknown, (string | number)[]>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<unknown, Error>', gave the following error.
+    Object literal may only specify known properties, and 'keepPreviousData' does not exist in type 'DefinedInitialDataOptions<unknown, Error, unknown, (string | number)[]>'.
+  Overload 2 of 3, '(options: UndefinedInitialDataOptions<any, Error, any, (string | number)[]>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error.
+    Object literal may only specify known properties, and 'keepPreviousData' does not exist in type 'UndefinedInitialDataOptions<any, Error, any, (string | number)[]>'.
+  Overload 3 of 3, '(options: UseQueryOptions<any, Error, any, (string | number)[]>, queryClient?: QueryClient | undefined): UseQueryResult<any, Error>', gave the following error.
+    Object literal may only specify known properties, and 'keepPreviousData' does not exist in type 'UseQueryOptions<any, Error, any, (string | number)[]>'.
+src/pages/admin/AdminPortal.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/admin/AdminPortal.tsx(70,7): error TS2322: Type 'string' is not assignable to type '"ACTIVE" | "INACTIVE" | "SUSPENDED"'.
+src/pages/admin/AdminPortal.tsx(96,41): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/pages/admin/AdminPortal.tsx(162,41): error TS2339: Property 'data' does not exist on type '{}'.
+src/pages/admin/AdminPortal.tsx(162,51): error TS7006: Parameter 'user' implicitly has an 'any' type.
+src/pages/admin/AdminPortal.tsx(168,47): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/pages/admin/AdminPortal.tsx(168,50): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/pages/admin/AdminPortal.tsx(218,59): error TS7006: Parameter 'val' implicitly has an 'any' type.
+src/pages/admin/AdminPortal.tsx(218,64): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/pages/admin/AdminPortal.tsx(293,40): error TS2339: Property 'meta' does not exist on type '{}'.
+src/pages/doctor/AppointmentList.tsx(118,45): error TS2339: Property 'DOCTOR_PORTAL' does not exist on type '{ readonly LOGIN: "/login"; readonly VERIFY_EMAIL: "/verify-email"; readonly DASHBOARD: "/dashboard"; readonly PORTAL: "/portal"; }'.
+src/pages/doctor/DoctorPortal.tsx(8,20): error TS6133: 'Search' is declared but its value is never read.
+src/pages/doctor/DoctorPortal.tsx(8,75): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/doctor/UpNextCard.tsx(57,37): error TS2339: Property 'DOCTOR_PORTAL' does not exist on type '{ readonly LOGIN: "/login"; readonly VERIFY_EMAIL: "/verify-email"; readonly DASHBOARD: "/dashboard"; readonly PORTAL: "/portal"; }'.
+src/pages/layouts/DashboardLayout.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/layouts/PortalLayout.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/patient/PatientPotral.tsx(12,1): error TS6133: 'Input' is declared but its value is never read.
+src/services/mockApi.ts(32,35): error TS6133: 'password' is declared but its value is never read.

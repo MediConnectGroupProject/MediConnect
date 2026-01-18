@@ -1,9 +1,10 @@
+import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../utils/authContext";
 import { RouteNames } from "../utils/RouteNames";
 import { GetPrimaryRole } from "../utils/GetPrimaryRole";
 
-export default function PublicRoute({ children }: { children: JSX.Element }) {
+export default function PublicRoute({ children }: { children: React.ReactElement }) {
   const { user } = useAuth();
 
   if (user) {

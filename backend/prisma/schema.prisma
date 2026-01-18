@@ -7,47 +7,231 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum userRole {
-  PATIENT
-  DOCTOR
-  ADMIN
-  PHARMACIST
-  RECEPTIONIST
-  MLT
+// role types
+// enum userRole {
+//   PATIENT
+//   DOCTOR
+//   ADMIN
+//   PHARMACIST
+//   RECEPTIONIST
+//   MLT
+// }
+
+// common user details
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
 }
 
 model User {
-  id        String   @id @default(uuid())
-  firstName String   @db.VarChar(200)
-  lastName  String   @db.VarChar(200)
-  email     String   @unique
-  phone     String?  @db.VarChar(20)
+  id        String  @id @default(uuid())
+  firstName String  @db.VarChar(200)
+  lastName  String  @db.VarChar(200)
+  email     String  @unique
+  phone     String? @db.VarChar(20)
   password  String
+  status    UserStatus @default(ACTIVE)
 
-  isEmailVerified Boolean @default(false)
-  emailVerificationToken String?
+  isEmailVerified         Boolean   @default(false)
+  emailVerificationToken  String?
   emailVerificationExpiry DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  roles      UserRole[]
+  roles         UserRole[]
+  license       License[]
+  prescriptions Prescription[]
+  notifications Notification[]
+  doctors       Doctor[]
+  patients      Patient[]
 }
 
+// user roles
 model Role {
-
   id   Int    @id @default(autoincrement())
   name String @unique
 
   users UserRole[]
 }
 
+// user & related roles
 model UserRole {
   userId String
   roleId Int
+  status UserStatus @default(ACTIVE)
 
-  user User @relation(fields: [userId], references: [id] ,onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id] ,onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
 }
+
+// unique user tables
+model Doctor {
+  doctorId       String  @id
+  specialization String  @db.VarChar(200)
+  availability   Boolean @default(true) // default available
+
+  user         User          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model Patient {
+  patientId String   @id
+  nic       String   @db.VarChar(12)
+  dob       DateTime @db.Date
+  address   String   @db.VarChar(200)
+  gender    Gender
+
+  user         User          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+}
+
+// user licence details
+model License {
+  userId      String  @id
+  license_no  String  @db.VarChar(100)
+  description String? @db.VarChar(200)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Pharmacy & Inventory
+model MedicineCategory {
+  categoryId  Int     @id @default(autoincrement())
+  name        String  @unique
+  description String? @db.VarChar(200)
+
+  medicines Medicine[]
+}
+
+enum DosageTypes {
+  mg
+  ml
+  drops
+}
+
+model DosageForms {
+  dosageId    Int         @id @default(autoincrement())
+  name        String      @unique // e.g. Tablet, Syrup, Oral Liquid ,Eye Drops
+  defaultUnit DosageTypes
+
+  medicines Medicine[]
+}
+
+model Medicine {
+  medicineId  String  @id @default(uuid())
+  name        String  @db.VarChar(200)
+  description String? @db.VarChar(200)
+  price       Decimal @db.Decimal(10, 2)
+  stock       Int     @default(0)
+
+  categoryId Int?
+  dosageId   Int?
+
+  medicineCategory  MedicineCategory?  @relation(fields: [categoryId], references: [categoryId], onDelete: SetNull)
+  medicineDosage    DosageForms?       @relation(fields: [dosageId], references: [dosageId], onDelete: SetNull)
+  inventoryLogs     InventoryLogs[]
+  prescriptionItems PrescriptionItem[]
+}
+
+enum changeType {
+  STOCK_IN
+  SALE
+  RETURN
+  EXPIRED
+  PRESCRIPTION_DISPENSED
+  ADJUSTMENT
+}
+
+model InventoryLogs {
+  inventoryLogId String     @id @default(uuid())
+  medicineId     String?
+  quantity       Int
+  changeType     changeType
+  date           DateTime   @default(now())
+
+  medicine Medicine? @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)
+}
+
+// appointment details
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELED
+}
+
+model Appointment {
+  appointmentId String            @id @default(cuid())
+  patientId     String
+  doctorId      String
+  date          DateTime          @db.Date
+  time          DateTime          @db.Time
+  status        AppointmentStatus
+
+  patient       Patient        @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade)
+  prescriptions Prescription[]
+}
+
+// prescription details
+enum PrescriptionStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
+model Prescription {
+  prescriptionId String             @id @default(uuid())
+  appointmentId  String?
+  userId         String
+  notes          String?            @db.Text
+  issuedAt       DateTime           @default(now())
+  status         PrescriptionStatus @default(PENDING)
+
+  appointment       Appointment?       @relation(fields: [appointmentId], references: [appointmentId], onDelete: Cascade)
+  prescriptionItems PrescriptionItem[]
+  user              User               @relation(fields: [userId], references: [id])
+}
+
+model PrescriptionItem {
+  itemId         String    @id @default(uuid())
+  prescriptionId String
+  medicineId     String?
+  medicineName   String? // if medicineId is null
+  dosage         String?   @db.VarChar(100)
+  duration       DateTime?
+  instructions   String?   @db.Text
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [prescriptionId], onDelete: Cascade)
+  medicine     Medicine?    @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)
+}
+
+model Notification {
+  notificationId String  @id @default(uuid())
+  userId         String
+  message        String  @db.Text
+  isRead         Boolean @default(false)
+
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// bills // update later
+// model Bill {
+//   billId          String   @id @default(uuid())
+//   patientId       String
+//   receptionistId  String
+//   prescription_id String
+//   total           Decimal  @db.Decimal(10, 2)
+//   created_at      DateTime @default(now())
+// }

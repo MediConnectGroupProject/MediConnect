@@ -29,6 +29,19 @@ const MOCK_PRESCRIPTIONS: Prescription[] = []; // Start empty or add samples
 
 export const MockApi = {
   // Auth
+  register: async (email: string, _password: string, name: string, role: string): Promise<User> => {
+    await new Promise(r => setTimeout(r, 500));
+    const newUser: User = {
+      id: `u${Date.now()}`,
+      name: name,
+      email: email,
+      roles: [role.toUpperCase() as any],
+      primaryRole: role.toUpperCase() as any
+    };
+    MOCK_USERS.push(newUser);
+    return newUser;
+  },
+
   login: async (email: string): Promise<User> => {
     // Simple mock login: find user by ID or just return the first matching role
     await new Promise(r => setTimeout(r, 500)); // Simulate delay
@@ -45,6 +58,7 @@ export const MockApi = {
     
     throw new Error('Invalid credentials');
   },
+
 
   getCurrentUser: async (): Promise<User | null> => {
     const stored = localStorage.getItem('user');

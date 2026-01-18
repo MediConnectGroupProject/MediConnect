@@ -2,13 +2,14 @@
 export const RouteNames = {
 
     LOGIN: '/login',
-    DOCTOR_PORTAL: '/doctor-portal',
-    PATIENT_PORTAL: '/patient-portal',
-    ADMIN_PORTAL: '/admin-portal',
-    MLT_PORTAL: '/mlt-portal',
-    PHARMACIST_PORTAL: '/pharmacist-portal',
-    RECEPTIONIST_PORTAL: '/receptionist-portal',
     VERIFY_EMAIL: '/verify-email',
     DASHBOARD: '/dashboard',
+    PORTAL: '/portal',
+    DOCTOR_PORTAL: '/portal/doctor',
+    PATIENT_PORTAL: '/portal/patient',
+    PHARMACIST_PORTAL: '/portal/pharmacist',
+    ADMIN_PORTAL: '/portal/admin',
+    MLT_PORTAL: '/portal/mlt',
+    RECEPTIONIST_PORTAL: '/portal/receptionist',
 
 } as const;

@@ -8,6 +8,7 @@ import passport from './config/passport.js';
 
 // import routes here ....
 import authRoutes from './routes/authRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 
 
@@ -19,7 +20,7 @@ const app = express();
 // middleware setup here ...
 app.use(cors({
   origin: "http://localhost:5173",
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE" ,"PATCH"],
   credentials: true
 }));
 
@@ -32,6 +33,7 @@ app.use(passport.initialize());
 
 // use routes here ...
 app.use('/api/auth', authRoutes);
+app.use('/api', adminRoutes);
 
 
 app.use(errorHandler);

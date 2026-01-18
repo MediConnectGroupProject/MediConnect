@@ -16,7 +16,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { setUser } = useAuth();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +36,7 @@ export default function Register() {
         // Auto login after register? Or redirect to login?
         // Let's redirect to login for security/verification flow usually, or auto-login.
         // For this demo, let's login directly.
-        login(user); // Set auth context
+        setUser(user); // Set auth context
         navigate('/patient-portal'); // Redirect to patient portal
       } else {
         setError('Registration failed. Please try again.');

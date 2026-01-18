@@ -19,7 +19,7 @@ export default function RoleGuard({ children, allowedRoles }: props) {
 
     const roles = user.roles;
 
-    const hasAccess = allowedRoles.some((role) => roles?.includes(role));
+    const hasAccess = allowedRoles.some((role) => roles?.includes(role as any));
 
     return hasAccess ? <>{children}</> : <Navigate to="/403" replace/>;
 }

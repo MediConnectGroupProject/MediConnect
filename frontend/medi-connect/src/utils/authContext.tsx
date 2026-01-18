@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { Spinner } from "../components/ui/spinner";
 
 
 import { MockApi } from "../services/mockApi";
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bootstrapAuth();
   }, []);
 
-  if (loading) return null; // or spinner
+  if (loading) return <Spinner />; // or spinner
 
   const logout = () => {
     setUser(null);
