@@ -1,11 +1,11 @@
-import React from 'react';
+
 import { Outlet, useNavigate } from 'react-router-dom';
 import { RouteNames } from '../utils/RouteNames';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Calendar, Users, Activity, FileText, PlusCircle, Bell, TestTube, DollarSign, Receipt, CheckCircle } from 'lucide-react';
+
 
 import { useAuth } from '../utils/authContext';
 

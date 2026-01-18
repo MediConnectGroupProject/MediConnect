@@ -8,15 +8,22 @@ import { MockApi } from '../../services/mockApi';
 import type { Prescription } from '../../types';
 import { Plus, Trash2 } from 'lucide-react';
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Textarea } from '../../components/ui/textarea';
+
 export function PrescriptionForm() {
+
   const [patientId, setPatientId] = useState('');
-  const [items, setItems] = useState([{ name: '', dosage: '', frequency: '', duration: '' }]);
+  const [items, setItems] = useState([{ name: '', dosage: '', frequency: '', timing: 'After Food', duration: '', tabletCount: '', instructions: '' }]);
+  const [extraInstructions, setExtraInstructions] = useState('');
+
   const [generatedPrescription, setGeneratedPrescription] = useState<Prescription | null>(null);
   const [loading, setLoading] = useState(false);
 
   const addItem = () => {
-    setItems([...items, { name: '', dosage: '', frequency: '', duration: '' }]);
+    setItems([...items, { name: '', dosage: '', frequency: '', timing: 'After Food', duration: '', tabletCount: '', instructions: '' }]);
   };
+
 
   const removeItem = (index: number) => {
     const newItems = [...items];
@@ -41,7 +48,15 @@ export function PrescriptionForm() {
         doctorName: 'Dr. John Doe',
         appointmentId: 'a_dummy', // Dummy appointment ID for direct prescription
         date: new Date().toISOString().split('T')[0],
-        items: items.map((i, idx) => ({ ...i, medicationId: `m${idx}` }))
+        items: items.map((i, idx) => ({ 
+            ...i, 
+            frequency: `${i.frequency} ${i.timing}`, // Combine for backward compatibility if needed
+            medicationId: `m${idx}`,
+            tabletCount: (i as any).tabletCount,
+            instructions: (i as any).instructions 
+        })),
+        notes: extraInstructions
+
       });
       setGeneratedPrescription(prescription);
     } catch (e) {
@@ -71,34 +86,88 @@ export function PrescriptionForm() {
             <div className="space-y-4">
               <Label>Medications</Label>
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-end border p-2 rounded bg-gray-50">
-                  <div className="col-span-4">
+                <div key={index} className="grid grid-cols-12 gap-2 items-start border p-2 rounded bg-gray-50">
+                  <div className="col-span-12 md:col-span-4">
                      <p className="text-xs mb-1">Drug Name</p>
                      <Input placeholder="Paracetamol" value={item.name} onChange={e => updateItem(index, 'name', e.target.value)} required />
                   </div>
-                  <div className="col-span-3">
+                  <div className="col-span-6 md:col-span-2">
                      <p className="text-xs mb-1">Dosage</p>
-                     <Input placeholder="500mg" value={item.dosage} onChange={e => updateItem(index, 'dosage', e.target.value)} />
+                     <Input 
+                        placeholder="500" 
+                        value={item.dosage} 
+                        onChange={e => updateItem(index, 'dosage', e.target.value)}
+                        onBlur={e => {
+                            const val = e.target.value;
+                            if(val && /^\d+$/.test(val)) {
+                                updateItem(index, 'dosage', val + 'mg');
+                            }
+                        }}
+                     />
                   </div>
-                  <div className="col-span-4">
-                     <p className="text-xs mb-1">Instruction</p>
-                     <Input placeholder="1-0-1 after food" value={item.frequency} onChange={e => updateItem(index, 'frequency', e.target.value)} />
+                  <div className="col-span-6 md:col-span-2">
+                     <p className="text-xs mb-1">Qty</p>
+                     <Input 
+                        placeholder="e.g. 10" 
+                        value={(item as any).tabletCount || ''} 
+                        onChange={e => updateItem(index, 'tabletCount', e.target.value)} 
+                     />
                   </div>
-                  <div className="col-span-1">
-                    <Button type="button" variant="destructive" size="icon" onClick={() => removeItem(index)}>
+                  <div className="col-span-10 md:col-span-3">
+                     <p className="text-xs mb-1">Duration</p>
+                     <Input placeholder="e.g. 5 days" value={item.duration} onChange={e => updateItem(index, 'duration', e.target.value)} />
+                  </div>
+                  <div className="col-span-2 md:col-span-1 flex flex-col justify-end pb-0.5">
+                    <Button type="button" variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50 h-10 w-10" onClick={() => removeItem(index)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                  
+                  <div className="col-span-12 flex flex-col md:flex-row gap-4 mt-2">
+                      <div className="w-full md:w-1/3">
+                         <p className="text-xs mb-1">Timing</p>
+                         <Select value={(item as any).timing} onValueChange={val => updateItem(index, 'timing', val)}>
+                            <SelectTrigger className="h-10 w-full">
+                                <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="After Food">After Food</SelectItem>
+                                <SelectItem value="Before Food">Before Food</SelectItem>
+                            </SelectContent>
+                         </Select>
+                      </div>
+                      <div className="w-full md:w-2/3">
+                         <p className="text-xs mb-1">Extra Instructions (Optional)</p>
+                         <Input 
+                            placeholder="e.g. Take with warm water" 
+                            className="w-full"
+                            value={(item as any).instructions || ''} 
+                            onChange={e => updateItem(index, 'instructions', e.target.value)} 
+                         />
+                      </div>
+                  </div>
                 </div>
+
               ))}
               <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-full">
                 <Plus className="h-4 w-4 mr-2" /> Add Medication
               </Button>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea 
+                    placeholder="General notes for the prescription..." 
+                    value={extraInstructions}
+                    onChange={e => setExtraInstructions(e.target.value)}
+                />
+            </div>
+
+
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
               {loading ? 'Generating...' : 'Generate Prescription & QR'}
             </Button>
+
           </form>
         ) : (
           <div className="flex flex-col items-center space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
@@ -116,8 +185,15 @@ export function PrescriptionForm() {
                    <li key={idx}>{i.name} - {i.dosage} ({i.frequency})</li>
                  ))}
                </ul>
+               {(generatedPrescription as any).notes && (
+                   <div className="mt-2 pt-2 border-t">
+                       <p className="text-xs font-semibold">Notes:</p>
+                       <p className="text-sm italic">{(generatedPrescription as any).notes}</p>
+                   </div>
+               )}
             </div>
-            <Button variant="outline" onClick={() => { setGeneratedPrescription(null); setItems([{ name: '', dosage: '', frequency: '', duration: '' }]); }}>
+            <Button variant="outline" onClick={() => { setGeneratedPrescription(null); setItems([{ name: '', dosage: '', frequency: '', timing: 'After Food', duration: '', tabletCount: '', instructions: '' }]); setExtraInstructions(''); }}>
+
               Issue Another
             </Button>
           </div>

@@ -1,6 +1,8 @@
-import React from 'react'
+
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Login from './pages/Login'
+import LandingPage from './pages/LandingPage'
+import Register from './pages/Register'
 import DoctorPortal from './pages/doctor/DoctorPortal'
 import PatientPortal from './pages/patient/PatientPotral'
 import VerifyEmail from './pages/VerifyEmail'
@@ -17,6 +19,18 @@ import AuthGuard from './guards/AuthGuard'
 import PublicRoute from './guards/PublicRoute'
 
 const router = createBrowserRouter([
+  {
+    path: '/',
+    element: (
+        <PublicRoute><LandingPage /></PublicRoute>
+    )
+  },
+  {
+    path: '/register', // Explicit path for registration
+    element: (
+        <PublicRoute><Register /></PublicRoute>
+    )
+  },
   {
     path: RouteNames.LOGIN,
     element: (

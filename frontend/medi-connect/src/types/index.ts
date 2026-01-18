@@ -38,7 +38,9 @@ export interface Prescription {
   items: PrescriptionItem[];
   status: 'ISSUED' | 'DISPENSED';
   qrCodeData: string; // The content encoded in the QR
+  notes?: string;
 }
+
 
 export interface InventoryItem {
   id: string;

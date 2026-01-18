@@ -1,5 +1,8 @@
 import { AppointmentList } from './AppointmentList';
 import { PrescriptionForm } from './PrescriptionForm';
+import { DoctorStats } from './DoctorStats';
+import { UpNextCard } from './UpNextCard';
+
 
 export default function DoctorDashboard() {
   return (
@@ -9,13 +12,23 @@ export default function DoctorDashboard() {
          <span className="text-sm text-gray-500">Today: {new Date().toLocaleDateString()}</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Column: Appointments */}
-        <AppointmentList />
+      <DoctorStats />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Left Column: Up Next & Appointments */}
+        <div className="col-span-2 space-y-6">
+            <UpNextCard />
+            <div className="grid grid-cols-1">
+                 <AppointmentList />
+            </div>
+        </div>
 
         {/* Right Column: New Prescription */}
-        <PrescriptionForm />
+        <div className="col-span-1">
+            <PrescriptionForm />
+        </div>
       </div>
     </div>
   );
 }
+

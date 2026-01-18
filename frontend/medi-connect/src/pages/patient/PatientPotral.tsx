@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { UserProfile } from '../../components/UserProfile';
 import {
   Card,
   CardContent,
@@ -455,78 +456,16 @@ export default function PatientPortal() {
             </Card>
           </TabsContent>
 
+
+
+
+
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-6">
             <h2 className="text-2xl font-semibold">Profile & Settings</h2>
-
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                  <CardDescription>
-                    Update your personal details and medical history
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">First Name</label>
-                      <Input
-                        value=""/>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Last Name</label>
-                      <Input
-                        value=""/>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Email</label>
-                      <Input
-                        value=""
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Phone</label>
-                      <Input
-                        value=""/>
-                    </div>
-                  </div>
-                  <Button>Update Information</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Medical History</CardTitle>
-                  <CardDescription>
-                    Your health records and medical information
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-medium mb-2">Allergies</h3>
-                      <p className="text-sm text-gray-600">
-                        Penicillin, Shellfish
-                      </p>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-medium mb-2">Current Medications</h3>
-                      <p className="text-sm text-gray-600">
-                        Lisinopril 10mg, Metformin 500mg
-                      </p>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-medium mb-2">Emergency Contact</h3>
-                      <p className="text-sm text-gray-600">
-                        Jane Doe - (555) 123-4567
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <UserProfile readOnly={false} />
           </TabsContent>
+
         </Tabs>
       </div>
     </div>

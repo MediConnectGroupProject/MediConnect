@@ -1,19 +1,32 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Calendar, Search, QrCode, Home, LogOut } from 'lucide-react';
+import { Calendar, Search, QrCode, Home, LogOut, CheckCircle, Undo, Plus, Clock } from 'lucide-react';
 import { Separator } from '../../components/ui/separator';
 import { useNavigate } from 'react-router-dom';
 import { RouteNames } from '../../utils/RouteNames';
 import { useAuth } from '../../utils/authContext';
+import { UserProfile } from '../../components/UserProfile';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "../../components/ui/dialog";
+
+import { useLocation } from 'react-router-dom';
 
 export default function DoctorPortal() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
+  const { logout } = useAuth();
+  const location = useLocation();
 
   const handleDashboardNavigation = () => {
      navigate(`${RouteNames.DASHBOARD}/doctor`);
@@ -21,13 +34,38 @@ export default function DoctorPortal() {
 
   const [activeTab, setActiveTab] = useState('schedule');
 
-  const todaysSchedule = [
+  useEffect(() => {
+    if (location.state && (location.state as any).tab) {
+        setActiveTab((location.state as any).tab);
+    }
+  }, [location]);
+
+
+  const [todaysSchedule, setTodaysSchedule] = useState([
     { id: 1, patient: 'John Smith', time: '9:00 AM', type: 'Consultation', status: 'upcoming', duration: '30 min' },
     { id: 2, patient: 'Mary Johnson', time: '9:30 AM', type: 'Follow-up', status: 'in_progress', duration: '15 min' },
     { id: 3, patient: 'Robert Davis', time: '10:00 AM', type: 'Check-up', status: 'upcoming', duration: '30 min' },
     { id: 4, patient: 'Sarah Wilson', time: '10:30 AM', type: 'Consultation', status: 'upcoming', duration: '45 min' },
     { id: 5, patient: 'Michael Brown', time: '11:15 AM', type: 'Emergency', status: 'urgent', duration: '30 min' }
-  ];
+  ]);
+
+  // Add Appointment State
+  const [isAddApptOpen, setIsAddApptOpen] = useState(false);
+  const [newAppt, setNewAppt] = useState({ patient: '', time: '', type: 'Consultation', duration: '30 min' });
+
+  const handleAddAppointment = () => {
+      const id = Math.max(...todaysSchedule.map(s => s.id)) + 1;
+      setTodaysSchedule([...todaysSchedule, { ...newAppt, id, status: 'upcoming' }]);
+      setIsAddApptOpen(false);
+      setNewAppt({ patient: '', time: '', type: 'Consultation', duration: '30 min' });
+  };
+
+  // Manage Availability State
+  const [availability, setAvailability] = useState({
+      start: '09:00',
+      end: '17:00',
+      days: { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false }
+  });
 
   const patientQueue = [
     { id: 1, patient: 'Mary Johnson', checkInTime: '9:25 AM', waitTime: '5 min', room: 'Room 3', status: 'waiting' },
@@ -98,11 +136,84 @@ export default function DoctorPortal() {
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Today's Schedule</h2>
               <div className="flex gap-2">
-                <Button variant="outline">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Manage Availability
-                </Button>
-                <Button>Add Appointment</Button>
+                {/* Manage Availability Dialog */}
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="outline">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Manage Availability
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Manage Availability</DialogTitle>
+                            <DialogDescription>Set your standard working hours for the week.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Start Time</Label>
+                                    <Input type="time" value={availability.start} onChange={e => setAvailability({...availability, start: e.target.value})} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>End Time</Label>
+                                    <Input type="time" value={availability.end} onChange={e => setAvailability({...availability, end: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Working Days</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.entries(availability.days).map(([day, active]) => (
+                                        <div key={day} 
+                                             className={`px-3 py-1 rounded-full border cursor-pointer text-sm ${active ? 'bg-blue-100 border-blue-500 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}
+                                             onClick={() => setAvailability({...availability, days: {...availability.days, [day]: !active}})}
+                                        >
+                                            {day}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button>Save Changes</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Add Appointment Dialog */}
+                <Dialog open={isAddApptOpen} onOpenChange={setIsAddApptOpen}>
+                    <DialogTrigger asChild>
+                        <Button><Plus className="h-4 w-4 mr-2" /> Add Appointment</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Add New Appointment</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Patient Name</Label>
+                                <Input value={newAppt.patient} onChange={e => setNewAppt({...newAppt, patient: e.target.value})} placeholder="e.g. John Doe" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Time</Label>
+                                    <Input value={newAppt.time} onChange={e => setNewAppt({...newAppt, time: e.target.value})} placeholder="e.g. 10:00 AM" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Duration</Label>
+                                    <Input value={newAppt.duration} onChange={e => setNewAppt({...newAppt, duration: e.target.value})} placeholder="e.g. 30 min" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Type</Label>
+                                <Input value={newAppt.type} onChange={e => setNewAppt({...newAppt, type: e.target.value})} placeholder="e.g. Consultation" />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button onClick={handleAddAppointment}>Schedule Appointment</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
               </div>
             </div>
 
@@ -116,16 +227,17 @@ export default function DoctorPortal() {
                   {todaysSchedule.map((appointment) => (
                     <div key={appointment.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
-                        <div className="text-center">
+                        <div className="text-center w-20">
                           <p className="font-medium">{appointment.time}</p>
-                          <p className="text-sm text-gray-500">{appointment.duration}</p>
+                          <p className="text-xs text-gray-500">{appointment.duration}</p>
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-medium">{appointment.patient}</h3>
                             <Badge variant={
                               appointment.status === 'urgent' ? 'destructive' :
-                              appointment.status === 'in_progress' ? 'default' : 'secondary'
+                              appointment.status === 'in_progress' ? 'default' : 
+                              appointment.status === 'completed' ? 'secondary' : 'outline'
                             }>
                               {appointment.status.replace('_', ' ')}
                             </Badge>
@@ -133,9 +245,50 @@ export default function DoctorPortal() {
                           <p className="text-sm text-gray-600">{appointment.type}</p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">View History</Button>
-                        <Button size="sm">Start Consultation</Button>
+                      <div className="flex gap-2 items-center">
+                        <Button variant="ghost" size="sm" onClick={() => navigate('.', { state: { tab: 'patients', patientId: 'u'+appointment.id } })}>View Profile</Button> 
+                        
+                        {/* Status Actions */}
+                        {appointment.status === 'upcoming' || appointment.status === 'urgent' ? (
+                             <Button size="sm" onClick={() => {
+                                const updated = todaysSchedule.map(app => 
+                                    app.id === appointment.id ? { ...app, status: 'in_progress' } : app
+                                );
+                                setTodaysSchedule(updated);
+                             }}>Start Consultation</Button>
+                        ) : null}
+
+                        {appointment.status === 'in_progress' && (
+                            <>
+                                <Button size="sm" variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                    onClick={() => {
+                                        const updated = todaysSchedule.map(app => 
+                                            app.id === appointment.id ? { ...app, status: 'upcoming' } : app
+                                        );
+                                        setTodaysSchedule(updated);
+                                    }}
+                                    title="Undo Start"
+                                >
+                                    <Undo className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => {
+                                        const updated = todaysSchedule.map(app => 
+                                            app.id === appointment.id ? { ...app, status: 'completed' } : app
+                                        );
+                                        setTodaysSchedule(updated);
+                                    }}
+                                >
+                                    <CheckCircle className="h-4 w-4 mr-2" /> Complete
+                                </Button>
+                            </>
+                        )}
+                        
+                         {appointment.status === 'completed' && (
+                            <span className="text-sm text-green-600 flex items-center gap-1">
+                                <CheckCircle className="h-4 w-4" /> Done
+                            </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -244,14 +397,26 @@ export default function DoctorPortal() {
           <TabsContent value="patients" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Patient Management</h2>
-              <div className="flex gap-2">
-                <div className="relative">
-                  <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <Input placeholder="Search patients..." className="pl-9" />
-                </div>
-                <Button>Add Patient</Button>
-              </div>
+              <Button onClick={() => {
+                  const newPatientId = Math.random().toString(36).substring(7); // temp ID
+                  navigate('.', { replace: true, state: { tab: 'patients', patientId: newPatientId } });
+              }}>Add Patient</Button>
             </div>
+
+            {(location.state as any)?.patientId ? (
+                <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Badge className="bg-blue-600">Active Viewing</Badge>
+                            <span className="font-medium text-blue-900">Dr. is currently viewing patient ID: {(location.state as any).patientId}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => navigate('.', { replace: true, state: { ...location.state, patientId: undefined } })}>Clear View</Button>
+                    </div>
+                    {/* Use the new UserProfile Component */}
+                    <UserProfile userId={(location.state as any).patientId} readOnly={true} /> 
+                </div>
+            ) : (
+
 
             <Card>
               <CardHeader>
@@ -279,6 +444,7 @@ export default function DoctorPortal() {
                 </div>
               </CardContent>
             </Card>
+            )}
           </TabsContent>
 
           {/* Calendar Tab */}
