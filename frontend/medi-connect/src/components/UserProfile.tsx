@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { User, FileText, Edit, AlertCircle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
@@ -60,8 +60,53 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
     };
 
     const [data, setData] = useState<UserProfileData>(initialData || defaultData);
+    const [loading, setLoading] = useState(false);
+
+    // Fetch data if userId provided and no initialData
+    useEffect(() => {
+        if (userId && !initialData && !userId.startsWith('u_dummy')) {
+             const fetchUser = async () => {
+                 setLoading(true);
+                 try {
+                     let fetchedData = null;
+                     const api = await import('../api/doctorApi');
+                     fetchedData = await api.getPatient(userId);
+                     
+                     if (fetchedData) {
+                         // Ensure we default missing array fields to empty arrays to avoid map errors
+                         setData({
+                             ...fetchedData,
+                             allergies: fetchedData.allergies || [],
+                             medications: fetchedData.medications || [],
+                             conditions: fetchedData.conditions || []
+                         });
+                     }
+                 } catch (e) {
+                     console.error("Failed to fetch user profile", e);
+                 } finally {
+                     setLoading(false);
+                 }
+             };
+             fetchUser();
+        }
+    }, [userId]); // Removed initialData from dep array to avoid loops if reference changes, though usually fine.
+
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState<UserProfileData>(data);
+    
+    // Update local state if prop changes
+    useEffect(() => {
+        if(initialData) {
+            setData(initialData);
+            setEditForm(initialData);
+        }
+    }, [initialData]);
+
+    // Update edit form when data changes (e.g. after fetch)
+    useEffect(() => {
+        setEditForm(data);
+    }, [data]);
+
 
     const handleSave = () => {
         setData(editForm);
@@ -168,6 +213,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
         <div className="space-y-6">
             <Card>
                 <CardHeader>
+                    {loading ? <div className="p-4 text-center">Loading profile...</div> : (
                      <CardContent className="p-0 flex flex-col md:flex-row items-center gap-6">
                         <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                             <User className="h-12 w-12" />
@@ -209,6 +255,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                             </Button>
                         )}
                     </CardContent>
+                    )}
                 </CardHeader>
             </Card>
 

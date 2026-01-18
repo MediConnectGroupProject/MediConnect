@@ -4,7 +4,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { MockApi } from '../services/mockApi'; 
+import { registerUser } from '../api/authApi';
 import { useAuth } from '../utils/authContext';
 import { ArrowLeft } from 'lucide-react';
 
@@ -16,7 +16,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  // const { setUser } = useAuth(); // Not used if redirecting to login
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,19 +30,25 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Hardcoded 'patient' role for public registration
-      const user = await MockApi.register(email, password, name, 'patient');
-      if (user) {
-        // Auto login after register? Or redirect to login?
-        // Let's redirect to login for security/verification flow usually, or auto-login.
-        // For this demo, let's login directly.
-        setUser(user); // Set auth context
-        navigate('/patient-portal'); // Redirect to patient portal
-      } else {
-        setError('Registration failed. Please try again.');
-      }
-    } catch (err) {
-      setError('Registration failed. Email might be in use.');
+      const parts = name.split(' ');
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(' ') || ' ';
+
+      // REAL API MODE
+      await registerUser({
+          email, 
+          password, 
+          firstName, 
+          lastName, 
+          phone: '0000000000' // Placeholder as form doesn't have phone yet
+      });
+      
+      // Success! Redirect to login or show success message
+      // With email verification, usually redirect to a "Verify your email" page or Login with a message.
+      navigate('/login'); 
+      
+    } catch (err: any) {
+      setError(err.message || 'Registration failed.');
     } finally {
       setLoading(false);
     }

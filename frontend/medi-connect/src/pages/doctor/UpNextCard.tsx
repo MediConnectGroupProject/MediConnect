@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { MockApi } from '../../services/mockApi';
-import type { Appointment } from '../../types';
-import { Clock, PlayCircle, User } from 'lucide-react';
-import { Badge } from '../../components/ui/badge';
-
 import { useNavigate } from 'react-router-dom';
+import { getUpNextAppointment } from '../../api/doctorApi';
+import type { Appointment } from '../../types';
+import { Badge } from '../../components/ui/badge';
+import { Clock, PlayCircle, User } from 'lucide-react';
 import { RouteNames } from '../../utils/RouteNames';
 
 export function UpNextCard() {
@@ -16,10 +15,24 @@ export function UpNextCard() {
 
   useEffect(() => {
     const fetchNext = async () => {
-        const appts = await MockApi.getDoctorAppointments('u1');
-        // Find first confirmed/pending appt
-        const upcoming = appts.find(a => a.status === 'CONFIRMED' || a.status === 'PENDING');
-        if (upcoming) setNextAppt(upcoming);
+        try {
+            const data = await getUpNextAppointment();
+            if (data) {
+                setNextAppt({
+                    id: data.appointmentId,
+                    patientName: `${data.patient.user.firstName} ${data.patient.user.lastName}`,
+                    patientId: data.patientId,
+                    date: data.date,
+                    time: new Date(data.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    status: data.status,
+                    reason: "Regular Consultation", // Placeholder as schema might miss it
+                    doctorId: data.doctorId,
+                    doctorName: "" // Not displayed in this card
+                });
+            }
+        } catch (e) {
+            console.error(e);
+        }
     };
     fetchNext();
   }, []);

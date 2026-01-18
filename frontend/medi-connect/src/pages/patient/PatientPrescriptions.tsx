@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import {QRCodeSVG} from 'qrcode.react';
-import { MockApi } from '../../services/mockApi';
+
 import type { Prescription } from '../../types';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
@@ -15,8 +15,22 @@ export function PatientPrescriptions() {
   useEffect(() => {
     const fetchPrescriptions = async () => {
       try {
-        const data = await MockApi.getPatientPrescriptions('u2'); // Hardcoded 
-        setPrescriptions(data);
+        const api = await import('../../api/patientApi');
+        const data = await api.getMyPrescriptions();
+        
+        const mapped = data.map((p: any) => ({
+             id: p.prescriptionId,
+             date: new Date(p.issuedAt).toLocaleDateString(),
+             doctorName: p.appointment?.doctor?.user ? `Dr. ${p.appointment.doctor.user.firstName}` : 'Unknown Doctor', // Assuming relation exists
+             items: p.prescriptionItems.map((pi: any) => ({
+                 name: pi.medicineName || pi.medicine?.name,
+                 dosage: pi.dosage
+             })),
+             status: p.status,
+             qrCodeData: p.rxToken || `RX-${p.prescriptionId}`
+        }));
+
+        setPrescriptions(mapped);
       } catch (e) {
         console.error(e);
       } finally {

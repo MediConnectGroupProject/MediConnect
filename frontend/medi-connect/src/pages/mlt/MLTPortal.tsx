@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -18,43 +18,71 @@ export function MLTPortal() {
   const { logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('reports');
-
   const [reportDetails, setReportDetails] = useState('');
+  const [labReports, setLabReports] = useState<any[]>([]);
 
-  const pendingReports = [
-    { id: 1, patient: 'John Smith', testType: 'Complete Blood Count', orderDate: '2024-01-10', doctor: 'Dr. Sarah Johnson', status: 'in_progress', priority: 'normal' },
-    { id: 2, patient: 'Mary Davis', testType: 'Lipid Panel', orderDate: '2024-01-10', doctor: 'Dr. Mike Chen', status: 'pending', priority: 'urgent' },
-    { id: 3, patient: 'Robert Wilson', testType: 'Thyroid Function', orderDate: '2024-01-09', doctor: 'Dr. Emily Davis', status: 'completed', priority: 'normal' },
-    { id: 4, patient: 'Lisa Johnson', testType: 'Diabetes Panel', orderDate: '2024-01-09', doctor: 'Dr. Sarah Johnson', status: 'ready', priority: 'normal' },
-    { id: 5, patient: 'David Brown', testType: 'Liver Function', orderDate: '2024-01-08', doctor: 'Dr. Mike Chen', status: 'in_progress', priority: 'urgent' }
-  ];
+  useEffect(() => {
+    const fetchReports = async () => {
+        try {
+            const reports = await import('../../api/mltApi').then(m => m.getLabReportQueue());
+            setLabReports(reports);
+        } catch (error) {
+            console.error("Failed to fetch lab reports", error);
+        }
+    }
+    fetchReports();
+  }, []);
 
-  const paymentQueue = [
-    { id: 1, patient: 'John Smith', service: 'Complete Blood Count', amount: 85, status: 'pending' },
-    { id: 2, patient: 'Mary Davis', service: 'Lipid Panel', amount: 120, status: 'pending' },
-    { id: 3, patient: 'Lisa Johnson', service: 'Diabetes Panel', amount: 95, status: 'pending' }
-  ];
 
-  const invoiceHistory = [
-    { id: 1, patient: 'Sarah Connor', invoiceNumber: 'LAB-2024-001', amount: 150, date: '2024-01-10', status: 'paid', testType: 'Full Panel' },
-    { id: 2, patient: 'Tom Anderson', invoiceNumber: 'LAB-2024-002', amount: 85, date: '2024-01-09', status: 'pending', testType: 'Blood Work' },
-    { id: 3, patient: 'Alice Walker', invoiceNumber: 'LAB-2024-003', amount: 110, date: '2024-01-08', status: 'paid', testType: 'Thyroid Test' }
-  ];
 
-  const recentResults = [
-    { id: 1, patient: 'Robert Wilson', testType: 'Thyroid Function', completedDate: '2024-01-10', results: 'Normal', doctor: 'Dr. Emily Davis' },
-    { id: 2, patient: 'Sarah Connor', testType: 'Complete Blood Count', completedDate: '2024-01-09', results: 'Abnormal - See notes', doctor: 'Dr. Sarah Johnson' },
-    { id: 3, patient: 'Tom Anderson', testType: 'Lipid Panel', completedDate: '2024-01-08', results: 'Normal', doctor: 'Dr. Mike Chen' }
-  ];
+  const pendingReports = labReports.map((r: any) => ({
+      id: r.reportId,
+      patient: r.patient?.user ? `${r.patient.user.firstName} ${r.patient.user.lastName}` : 'Unknown',
+      testType: r.testType, // "Blood Test" etc as defined in seed
+      orderDate: new Date(r.orderDate).toLocaleDateString(),
+      doctor: r.doctor?.user ? `Dr. ${r.doctor.user.firstName}` : 'Unknown',
+      status: r.status.toLowerCase(), // PENDING, IN_PROGRESS, COMPLETED
+      priority: r.priority?.toLowerCase() || 'normal',
+      resultData: r.resultData // Keep for reference
+  }));
 
-  const handleUpdateReport = (reportId: number) => {
-    // In real app, would update report in database
-    console.log('Updating report:', reportId, 'Details:', reportDetails);
-    setReportDetails('');
+  // Placeholder for payments/invoices until backend support added
+  const paymentQueue: any[] = [];
+  const invoiceHistory: any[] = [];
+
+  // Derive recent results from completed reports
+  const recentResults = labReports
+      .filter((r:any) => r.status === 'COMPLETED' || r.status === 'completed')
+      .map((r:any) => ({
+          id: r.reportId,
+          patient: r.patient?.user ? `${r.patient.user.firstName} ${r.patient.user.lastName}` : 'Unknown',
+          testType: r.testType,
+          completedDate: new Date(r.updatedAt).toLocaleDateString(),
+          results: r.resultData || 'Results available',
+          doctor: r.doctor?.user ? `Dr. ${r.doctor.user.firstName}` : 'Unknown'
+      }));
+
+  const handleUpdateReport = async (reportId: string) => {
+    try {
+        await import('../../api/mltApi').then(m => m.updateLabReport(reportId, { status: 'IN_PROGRESS', resultData: reportDetails }));
+        // Refresh local state (optimistic or re-fetch)
+        const reports = await import('../../api/mltApi').then(m => m.getLabReportQueue());
+        setLabReports(reports);
+        setReportDetails('');
+    } catch (error) {
+        console.error("Failed to update report", error);
+    }
   };
 
-  const handleMarkReady = (reportId: number) => {
-    console.log('Marking report as ready:', reportId);
+  const handleMarkReady = async (reportId: string) => {
+      try {
+        // Mark as COMPLETED (which acts as Ready for Doctor)
+        await import('../../api/mltApi').then(m => m.updateLabReport(reportId, { status: 'COMPLETED' }));
+        const reports = await import('../../api/mltApi').then(m => m.getLabReportQueue());
+        setLabReports(reports);
+    } catch (error) {
+        console.error("Failed to mark report complete", error);
+    }
   };
 
   const handleAcceptPayment = (paymentId: number) => {

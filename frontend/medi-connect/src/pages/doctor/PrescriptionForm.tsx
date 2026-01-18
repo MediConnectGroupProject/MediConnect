@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { QRCodeSVG } from 'qrcode.react';
-import { MockApi } from '../../services/mockApi';
+import { createPrescription } from '../../api/doctorApi';
 import type { Prescription } from '../../types';
 import { Plus, Trash2 } from 'lucide-react';
 
@@ -41,23 +41,19 @@ export function PrescriptionForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      // Mock creation
-      const prescription = await MockApi.createPrescription({
-        patientId: patientId || 'u2', // Default to Jane for demo
-        doctorId: 'u1',
-        doctorName: 'Dr. John Doe',
-        appointmentId: 'a_dummy', // Dummy appointment ID for direct prescription
-        date: new Date().toISOString().split('T')[0],
-        items: items.map((i, idx) => ({ 
-            ...i, 
-            frequency: `${i.frequency} ${i.timing}`, // Combine for backward compatibility if needed
-            medicationId: `m${idx}`,
-            tabletCount: (i as any).tabletCount,
-            instructions: (i as any).instructions 
-        })),
+      // REAL API CALL
+      const prescription = await createPrescription({
+        patientId: patientId || 'u2', // Should essentially select from a list or search
+        appointmentId: null, // or link to current visit
+        items: items, // backend controller handles mapping
         notes: extraInstructions
-
       });
+
+      // Add QR Code Data (mocked or returned from backend)
+      if (!prescription.qrCodeData) {
+          prescription.qrCodeData = JSON.stringify(prescription); 
+      }
+      
       setGeneratedPrescription(prescription);
     } catch (e) {
       console.error(e);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { MockApi } from '../../services/mockApi';
+
 import type { InventoryItem } from '../../types';
 import { Badge } from '../../components/ui/badge';
 import { Package } from 'lucide-react';
@@ -11,8 +11,18 @@ export function InventoryView() {
 
   useEffect(() => {
     const fetch = async () => {
-       const data = await MockApi.getInventory();
-       setInventory(data);
+       const api = await import('../../api/pharmacistApi');
+       const data = await api.getInventory();
+       
+       const mapped = data.map((i: any) => ({
+           id: i.medicineId,
+           name: i.name,
+           expiryDate: new Date(i.expiryDate).toLocaleDateString(),
+           quantity: i.stock,
+           category: i.category
+       }));
+
+       setInventory(mapped);
        setLoading(false);
     }
     fetch();

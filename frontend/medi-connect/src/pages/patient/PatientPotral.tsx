@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserProfile } from '../../components/UserProfile';
 import {
   Card,
@@ -26,138 +26,84 @@ import { RouteNames } from '../../utils/RouteNames';
 import { useAuth } from '../../utils/authContext';
 
 
+import { getMyAppointments, getMyPrescriptions, getNotifications, getBillingHistory } from '../../api/patientApi';
+
 export default function PatientPortal() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-
   const [activeTab, setActiveTab] = useState("appointments");
 
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [notificationsData, setNotificationsData] = useState<any[]>([]);
+  const [billingData, setBillingData] = useState<any[]>([]);
 
-  const upcomingAppointments = [
-    {
-      id: 1,
-      doctor: "Dr. Sarah Johnson",
-      specialty: "Cardiology",
-      date: "2024-01-15",
-      time: "2:00 PM",
-      status: "confirmed",
-    },
-    {
-      id: 2,
-      doctor: "Dr. Mike Chen",
-      specialty: "General Practice",
-      date: "2024-01-20",
-      time: "10:30 AM",
-      status: "pending",
-    },
-    {
-      id: 3,
-      doctor: "Dr. Emily Davis",
-      specialty: "Dermatology",
-      date: "2024-01-25",
-      time: "3:15 PM",
-      status: "confirmed",
-    },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+        try {
+            const apptsData = await getMyAppointments();
+            setAppointments(apptsData);
+            
+            const prescData = await getMyPrescriptions();
+            setPrescriptions(prescData);
 
-  const appointmentHistory = [
-    {
-      id: 4,
-      doctor: "Dr. Sarah Johnson",
-      specialty: "Cardiology",
-      date: "2024-01-05",
-      time: "2:00 PM",
-      status: "completed",
-    },
-    {
-      id: 5,
-      doctor: "Dr. Mike Chen",
-      specialty: "General Practice",
-      date: "2023-12-20",
-      time: "11:00 AM",
-      status: "completed",
-    },
-  ];
+            const notifData = await getNotifications();
+            setNotificationsData(notifData);
 
-  const prescriptions = [
-    {
-      id: 1,
-      medication: "Lisinopril 10mg",
-      doctor: "Dr. Sarah Johnson",
-      dateIssued: "2024-01-05",
-      status: "ready",
-      pharmacy: "MediPharm Plus",
-    },
-    {
-      id: 2,
-      medication: "Metformin 500mg",
-      doctor: "Dr. Mike Chen",
-      dateIssued: "2023-12-20",
-      status: "picked_up",
-      pharmacy: "HealthCare Pharmacy",
-    },
-    {
-      id: 3,
-      medication: "Vitamin D3 1000IU",
-      doctor: "Dr. Emily Davis",
-      dateIssued: "2024-01-03",
-      status: "processing",
-      pharmacy: "MediPharm Plus",
-    },
-  ];
+            const billData = await getBillingHistory();
+            setBillingData(billData);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    fetchData();
+  }, []);
 
-  const notifications = [
-    {
-      id: 1,
-      title: "Appointment Reminder",
-      message: "Your appointment with Dr. Sarah Johnson is tomorrow at 2:00 PM",
-      time: "2 hours ago",
-      type: "reminder",
-    },
-    {
-      id: 2,
-      title: "Prescription Ready",
-      message:
-        "Your Lisinopril prescription is ready for pickup at MediPharm Plus",
-      time: "1 day ago",
-      type: "prescription",
-    },
-    {
-      id: 3,
-      title: "Test Results Available",
-      message:
-        "Your blood work results are now available in your health records",
-      time: "3 days ago",
-      type: "results",
-    },
-  ];
+  // Derived state for UI
+  const upcomingAppointments = appointments.filter((a: any) => a.status === 'CONFIRMED' || a.status === 'PENDING').map((a: any) => ({
+      id: a.appointmentId,
+      doctor: `${a.doctor.user.firstName} ${a.doctor.user.lastName}`, // Nested from backend include
+      specialty: a.doctor.specialization,
+      date: new Date(a.date).toLocaleDateString(),
+      time: new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: a.status.toLowerCase()
+  }));
 
-  const billingHistory = [
-    {
-      id: 1,
-      service: "Cardiology Consultation",
-      doctor: "Dr. Sarah Johnson",
-      date: "2024-01-05",
-      amount: 150,
-      status: "paid",
-    },
-    {
-      id: 2,
-      service: "Blood Work",
-      doctor: "Dr. Mike Chen",
-      date: "2023-12-20",
-      amount: 85,
-      status: "pending",
-    },
-    {
-      id: 3,
-      service: "Prescription Fill",
-      pharmacy: "MediPharm Plus",
-      date: "2024-01-03",
-      amount: 25,
-      status: "paid",
-    },
-  ];
+  const appointmentHistory = appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELED').map((a: any) => ({
+      id: a.appointmentId,
+      doctor: `${a.doctor.user.firstName} ${a.doctor.user.lastName}`,
+      specialty: a.doctor.specialization,
+      date: new Date(a.date).toLocaleDateString(),
+      time: new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: a.status.toLowerCase()
+  }));
+
+  const prescriptionList = prescriptions.map((p: any) => ({
+        id: p.prescriptionId,
+        medication: p.prescriptionItems.map((i:any) => i.medicineName).join(', '), // Summary
+        doctor: p.appointment?.doctor?.user ? `Dr. ${p.appointment.doctor.user.firstName}` : 'Doctor',
+        dateIssued: new Date(p.issuedAt).toLocaleDateString(),
+        status: "ready", // database status is PENDING/COMPLETED, UI expects ready/picked_up. Map 'PENDING' -> 'ready'?
+        pharmacy: "MediPharm Plus" // Placeholder
+  }));
+
+  const notifications = notificationsData.map((n: any) => ({
+      id: n.notificationId,
+      title: "Notification", // Schema only has message, maybe implement title later or infer from type if added
+      message: n.messages, // Assuming 'messages' is the field for the notification content
+      time: new Date(n.createdAt).toLocaleDateString(), // Simplistic relative time?
+      type: "info"
+  }));
+
+  const billingHistory = billingData.map((b: any) => ({
+      id: b.billId,
+      service: b.description || b.type,
+      doctor: b.type === 'APPOINTMENT' ? 'Dr. Assigned' : null,
+      pharmacy: b.type === 'PHARMACY' ? 'MediPharm Plus' : null,
+      date: new Date(b.issuedDate).toLocaleDateString(),
+      amount: b.amount,
+      status: b.status.toLowerCase()
+  }));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -319,7 +265,7 @@ export default function PatientPortal() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {prescriptions.map((prescription) => (
+                  {prescriptionList.map((prescription) => (
                     <div
                       key={prescription.id}
                       className="flex items-center justify-between p-4 border rounded-lg"

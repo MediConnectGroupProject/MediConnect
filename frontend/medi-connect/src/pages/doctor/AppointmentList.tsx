@@ -2,15 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import { RouteNames } from '../../utils/RouteNames';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-
-
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-
 import { Button } from '../../components/ui/button';
-import { MockApi } from '../../services/mockApi';
+import { getAppointments } from '../../api/doctorApi';
 import type { Appointment } from '../../types';
-
 import { Badge } from '../../components/ui/badge';
 import { Calendar, Clock, User } from 'lucide-react';
 
@@ -23,8 +18,22 @@ export function AppointmentList() {
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const data = await MockApi.getDoctorAppointments('u1'); // Hardcoded ID for now or get from Auth
-        setAppointments(data);
+        const data = await getAppointments(new Date(), 'ALL');
+        
+        // Map backend response to frontend Appointment type if needed
+        const mappedData = data.map((items: any) => ({
+            id: items.appointmentId,
+            patientName: `${items.patient.user.firstName} ${items.patient.user.lastName}`,
+            patientId: items.patientId,
+            date: new Date(items.date).toLocaleDateString(), // or keep ISO
+            time: new Date(items.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            reason: items.reason || "General Consultation", 
+            status: items.status,
+            doctorId: items.doctorId,
+            doctorName: ""
+        }));
+
+        setAppointments(mappedData);
       } catch (e) {
         console.error("Failed to fetch appointments", e);
       }

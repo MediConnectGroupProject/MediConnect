@@ -41,13 +41,46 @@ export default function DoctorPortal() {
   }, [location]);
 
 
-  const [todaysSchedule, setTodaysSchedule] = useState([
-    { id: 1, patient: 'John Smith', time: '9:00 AM', type: 'Consultation', status: 'upcoming', duration: '30 min' },
-    { id: 2, patient: 'Mary Johnson', time: '9:30 AM', type: 'Follow-up', status: 'in_progress', duration: '15 min' },
-    { id: 3, patient: 'Robert Davis', time: '10:00 AM', type: 'Check-up', status: 'upcoming', duration: '30 min' },
-    { id: 4, patient: 'Sarah Wilson', time: '10:30 AM', type: 'Consultation', status: 'upcoming', duration: '45 min' },
-    { id: 5, patient: 'Michael Brown', time: '11:15 AM', type: 'Emergency', status: 'urgent', duration: '30 min' }
-  ]);
+  const [todaysSchedule, setTodaysSchedule] = useState<any[]>([]);
+  const [patientQueue, setPatientQueue] = useState<any[]>([]);
+  const [prescriptionRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchPortalData = async () => {
+        try {
+            const api = await import('../../api/doctorApi');
+            const data = await api.getDoctorPortalData();
+            
+            // Map Schedule
+            const schedule = data.schedule.map((apt: any) => ({
+                id: apt.appointmentId,
+                patientId: apt.patientId, // Added patientId
+                patient: apt.patient?.user ? `${apt.patient.user.firstName} ${apt.patient.user.lastName}` : 'Unknown',
+                time: new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: apt.status.toLowerCase(),
+                type: 'Consultation', // Default
+                duration: '30 min'
+            }));
+            setTodaysSchedule(schedule);
+
+            // Map Queue (Just filtering schedule for now, or use separate endpoint if needed)
+            const queue = schedule.filter((s:any) => s.status === 'checked_in' || s.status === 'in_progress').map((s:any) => ({
+                ...s,
+                checkInTime: s.time,
+                waitTime: '0 min',
+                room: 'Room 1'
+            }));
+            setPatientQueue(queue);
+
+            // Mock Prescriptions for now or fetch if endpoint exists
+            // setPrescriptionRequests([]); 
+
+        } catch (error) {
+            console.error("Failed to fetch portal data", error);
+        }
+    }
+    fetchPortalData();
+  }, []);
 
   // Add Appointment State
   const [isAddApptOpen, setIsAddApptOpen] = useState(false);
@@ -67,29 +100,25 @@ export default function DoctorPortal() {
       days: { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false }
   });
 
-  const patientQueue = [
-    { id: 1, patient: 'Mary Johnson', checkInTime: '9:25 AM', waitTime: '5 min', room: 'Room 3', status: 'waiting' },
-    { id: 2, patient: 'Robert Davis', checkInTime: '9:50 AM', waitTime: '10 min', room: 'Room 1', status: 'ready' },
-    { id: 3, patient: 'Sarah Wilson', checkInTime: '10:20 AM', waitTime: '15 min', room: 'Waiting Area', status: 'checked_in' }
-  ];
 
-  const prescriptionRequests = [
-    { id: 1, patient: 'John Smith', medication: 'Lisinopril 10mg', reason: 'Hypertension management', status: 'pending', date: '2024-01-15' },
-    { id: 2, patient: 'Mary Johnson', medication: 'Amoxicillin 500mg', reason: 'Upper respiratory infection', status: 'pending', date: '2024-01-15' },
-    { id: 3, patient: 'Robert Davis', medication: 'Metformin 500mg', reason: 'Diabetes management', status: 'approved', date: '2024-01-14' }
-  ];
 
-  const patientHistory = [
-    { id: 1, name: 'John Smith', lastVisit: '2024-01-10', condition: 'Hypertension', age: 45, phone: '(555) 123-4567' },
-    { id: 2, name: 'Mary Johnson', lastVisit: '2024-01-08', condition: 'Respiratory infection', age: 32, phone: '(555) 234-5678' },
-    { id: 3, name: 'Robert Davis', lastVisit: '2024-01-05', condition: 'Type 2 Diabetes', age: 58, phone: '(555) 345-6789' }
-  ];
+  const [patientHistory, setPatientHistory] = useState<any[]>([]);
+  const [reports] = useState<any[]>([]);
 
-  const reports = [
-    { id: 1, title: 'Monthly Patient Statistics', period: 'December 2023', generated: '2024-01-01', type: 'monthly' },
-    { id: 2, title: 'Treatment Outcomes Report', period: 'Q4 2023', generated: '2024-01-02', type: 'quarterly' },
-    { id: 3, title: 'Daily Summary Report', period: 'January 14, 2024', generated: '2024-01-15', type: 'daily' }
-  ];
+  // Update history when schedule changes (mock logic for now to avoid fake data)
+  useEffect(() => {
+    if (todaysSchedule.length > 0) {
+        const history = todaysSchedule.map(appt => ({
+            id: appt.id,
+            name: appt.patient,
+            lastVisit: new Date().toLocaleDateString(),
+            condition: 'General Checkup', // Real data needs condition field
+            age: 'N/A',
+            phone: 'N/A'
+        }));
+        setPatientHistory(history);
+    }
+  }, [todaysSchedule]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -246,7 +275,7 @@ export default function DoctorPortal() {
                         </div>
                       </div>
                       <div className="flex gap-2 items-center">
-                        <Button variant="ghost" size="sm" onClick={() => navigate('.', { state: { tab: 'patients', patientId: 'u'+appointment.id } })}>View Profile</Button> 
+                        <Button variant="ghost" size="sm" onClick={() => navigate('.', { state: { tab: 'patients', patientId: appointment.patientId } })}>View Profile</Button> 
                         
                         {/* Status Actions */}
                         {appointment.status === 'upcoming' || appointment.status === 'urgent' ? (
@@ -524,19 +553,19 @@ export default function DoctorPortal() {
                 <CardContent>
                   <div className="grid grid-cols-4 gap-4">
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">128</div>
-                      <div className="text-sm text-gray-600">Patients Seen</div>
+                      <div className="text-2xl font-bold text-blue-600">{todaysSchedule.length}</div>
+                      <div className="text-sm text-gray-600">Patients Today</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">95%</div>
+                      <div className="text-2xl font-bold text-green-600">--%</div>
                       <div className="text-sm text-gray-600">Show Rate</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">45</div>
-                      <div className="text-sm text-gray-600">Prescriptions</div>
+                      <div className="text-2xl font-bold text-purple-600">{prescriptionRequests.length}</div>
+                      <div className="text-sm text-gray-600">Pending Rx</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">4.8</div>
+                      <div className="text-2xl font-bold text-orange-600">--</div>
                       <div className="text-sm text-gray-600">Avg Rating</div>
                     </div>
                   </div>

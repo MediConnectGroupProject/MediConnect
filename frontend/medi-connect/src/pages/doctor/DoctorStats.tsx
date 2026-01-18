@@ -1,27 +1,31 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Activity, Users, FileText, Clock } from 'lucide-react';
-import { MockApi } from '../../services/mockApi';
+import { getDoctorStats } from '../../api/doctorApi';
 
 export function DoctorStats() {
   const [stats, setStats] = useState({
     appointments: 0,
     patientsSeen: 0,
-    pendingLabs: 0
+    pendingLabs: 0,
+    totalPatients: 0,
   });
 
   useEffect(() => {
     const loadStats = async () => {
-        // In a real app, these would come from real API endpoints
-        // Simulating some calculations based on available mock data
-        const appts = await MockApi.getDoctorAppointments('u1');
-        const labs = await MockApi.getLabRequests();
-        
-        setStats({
-            appointments: appts.length,
-            patientsSeen: appts.filter(a => a.status === 'COMPLETED').length,
-            pendingLabs: labs.filter(l => l.status === 'PENDING').length
-        });
+        try {
+            const data = await getDoctorStats();
+            // Map backend data
+            // calculated "appointments" as total for today = pending + seen (roughly)
+            setStats({
+                appointments: (data.pendingAppointments || 0) + (data.patientsSeen || 0), 
+                patientsSeen: data.patientsSeen || 0,
+                pendingLabs: data.pendingLabs || 0,
+                totalPatients: data.totalPatients || 0
+            });
+        } catch (e) {
+            console.error(e);
+        }
     };
     loadStats();
   }, []);
@@ -49,8 +53,8 @@ export function DoctorStats() {
       bg: "bg-orange-100" 
     },
     { 
-      label: "Total Prescriptions", 
-      value: "12", // Mock value for now
+      label: "Total Patients", 
+      value: stats.totalPatients, 
       icon: Activity, 
       color: "text-purple-600", 
       bg: "bg-purple-100" 

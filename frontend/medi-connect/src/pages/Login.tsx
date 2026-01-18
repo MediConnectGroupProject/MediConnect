@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { RouteNames } from '../utils/RouteNames';
 import { useAuth } from '../utils/authContext';
-import { MockApi } from '../services/mockApi';
+import { loginUser } from '../api/authApi';
 
 export default function Login() {
 
@@ -29,9 +29,11 @@ export default function Login() {
     setError(null);
 
     try {
-      // MOCK MODE
-      const user = await MockApi.login(email);
+      // REAL API MODE
+      const data = await loginUser(email, password);
       // Real API call logic would go here...
+
+      const user = data.user;
 
       setUser(user as any); // Cast for compatibility if needed or check types
       localStorage.setItem("user", JSON.stringify(user));

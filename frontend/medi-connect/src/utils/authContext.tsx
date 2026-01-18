@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Spinner } from "../components/ui/spinner";
 
 
-import { MockApi } from "../services/mockApi";
+import { getMe, logoutUser } from "../api/authApi";
 import type { User } from "../types";
 
 
@@ -27,25 +27,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
-        // MOCK MODE: Use MockApi
-        const user = await MockApi.getCurrentUser();
-        // const res = await fetch(`${API_URL}/auth/me`, {
-        //   credentials: "include",
-        // });
-
-        // if (!res.ok) throw new Error("Not authenticated");
-
-        // const data = await res.json();
+        // REAL API MODE
+        const data = await getMe();
         
-        if (user) {
-             setUser(user as User);
+        if (data?.user) {
+             setUser(data.user as User);
         }
 
-        // setUser(data.user);
-        // localStorage.setItem("user", JSON.stringify(data.user));
       } catch {
         setUser(null);
-        localStorage.removeItem("user");
+        // localStorage.removeItem("user"); // managed by cookie now mostly, but can keep for fallback if logic exists
       } finally {
         setLoading(false);
       }
@@ -56,7 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   if (loading) return <Spinner />; // or spinner
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+        await logoutUser();
+    } catch (e) {
+        console.error(e);
+    }
     setUser(null);
     localStorage.removeItem("user");
   };

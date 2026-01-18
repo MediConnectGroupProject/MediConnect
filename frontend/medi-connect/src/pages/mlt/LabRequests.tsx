@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { MockApi } from '../../services/mockApi';
+
 import type { LabRequest } from '../../types';
 import { Badge } from '../../components/ui/badge';
 import { FlaskConical, CheckCircle } from 'lucide-react';
@@ -20,14 +20,27 @@ export function LabRequests() {
   }, []);
 
   const fetchRequests = async () => {
-    const data = await MockApi.getLabRequests();
-    setRequests(data);
+    const api = await import('../../api/mltApi');
+    const data = await api.getLabReportQueue();
+    
+    // Filter for pending/in_progress but show completed too? Dashboard usually shows pending mostly.
+    const mapped = data.map((r: any) => ({
+        id: r.reportId,
+        testType: r.testType,
+        patientName: r.patient?.user ? `${r.patient.user.firstName} ${r.patient.user.lastName}` : 'Unknown',
+        date: new Date(r.orderDate).toLocaleDateString(),
+        status: r.status,
+        result: r.resultData
+    }));
+
+    setRequests(mapped);
     setLoading(false);
   };
 
   const handleUpdate = async () => {
     if (!selectedRequest) return;
-    await MockApi.updateLabResult(selectedRequest.id, resultInput);
+    const api = await import('../../api/mltApi');
+    await api.updateLabReport(selectedRequest.id, { resultData: resultInput, status: 'COMPLETED' });
     // Optimistic update
     setRequests(requests.map(r => r.id === selectedRequest.id ? { ...r, status: 'COMPLETED', result: resultInput } : r));
     setSelectedRequest(null);

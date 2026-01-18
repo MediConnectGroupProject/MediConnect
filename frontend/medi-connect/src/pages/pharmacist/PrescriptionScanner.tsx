@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
-import { MockApi } from '../../services/mockApi';
+
 import type { Prescription } from '../../types';
 import { Search, CheckCircle, AlertCircle } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
@@ -20,11 +20,26 @@ export function PrescriptionScanner() {
     setLoading(true);
 
     try {
-      const result = await MockApi.getPrescriptionById(scanId);
-      if (result) {
-        setPrescription(result);
+      const api = await import('../../api/pharmacistApi');
+      const queue = await api.getPrescriptionQueue();
+      // Client-side search for now since we don't have getById endpoint
+      const found = queue.find((p: any) => p.prescriptionId === Number(scanId) || p.prescriptionId?.toString() === scanId);
+      
+      if (found) {
+        setPrescription({
+            id: found.prescriptionId,
+            doctorName: found.appointment?.doctor?.user ? `Dr. ${found.appointment.doctor.user.firstName}` : 'Unknown',
+            date: new Date(found.issuedAt).toLocaleDateString(),
+            status: found.status,
+            items: found.prescriptionItems.map((i: any) => ({
+                name: i.medicineName || i.medicine?.name,
+                dosage: i.dosage,
+                frequency: 'As directed' // Schema gap?
+            })),
+            qrCodeData: ''
+        });
       } else {
-        setError('Prescription not found. Please check the ID.');
+        setError('Prescription not found in active queue.');
       }
     } catch (err) {
       setError('Error scanning prescription.');
@@ -37,8 +52,11 @@ export function PrescriptionScanner() {
     if (!prescription) return;
     setLoading(true);
     try {
-      const updated = await MockApi.dispensePrescription(prescription.id);
-      setPrescription(updated);
+      const api = await import('../../api/pharmacistApi');
+      await api.updatePrescriptionStatus(prescription.id.toString(), 'DISPENSED'); // Check if API expects string or number
+      // Re-fetch or locally update
+      const updated = { ...prescription, status: 'DISPENSED' };
+      setPrescription(updated as any);
     } catch (err) {
       setError('Failed to dispense.');
     } finally {

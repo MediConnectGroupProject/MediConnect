@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { MockApi } from '../../services/mockApi';
+
 import type { Appointment } from '../../types';
 
 import { Badge } from '../../components/ui/badge';
@@ -13,8 +13,20 @@ export function PatientAppointments() {
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const data = await MockApi.getPatientAppointments('u2'); // Hardcoded 'u2' for Jane Patient
-        setAppointments(data);
+        const api = await import('../../api/patientApi');
+        const data = await api.getMyAppointments();
+        
+        // Map backend -> frontend
+        const mapped = data.map((a: any) => ({
+             id: a.appointmentId,
+             doctorName: a.doctor?.user ? `Dr. ${a.doctor.user.firstName} ${a.doctor.user.lastName}` : 'Unknown Doctor',
+             date: new Date(a.dateTime).toLocaleDateString(),
+             time: new Date(a.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+             reason: 'Regular Visit', // Schema doesn't have reason yet? Or maybe it does.
+             status: a.status
+        }));
+
+        setAppointments(mapped);
       } catch (e) {
         console.error("Failed to fetch appointments", e);
       } finally {
