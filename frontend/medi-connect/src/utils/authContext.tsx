@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { Spinner } from "../components/ui/spinner";
 
 
 type User = {
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bootstrapAuth();
   }, []);
 
-  if (loading) return null; // or spinner
+  if (loading) return <Spinner />; // or spinner
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
