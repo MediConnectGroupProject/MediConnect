@@ -14,14 +14,7 @@ import { useAuth } from '../../utils/authContext';
 
 export function ReceptionistPortal() {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
-
-    
-    const onLogout = () => {
-        logout();
-        navigate(RouteNames.LOGIN);
-    };
-
+    const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState('appointments');
     const [searchTerm, setSearchTerm] = useState('');
@@ -103,34 +96,7 @@ export function ReceptionistPortal() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-2xl text-gray-900">Receptionist Portal</h1>
-                        <Badge variant="secondary">Receptionist</Badge>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <span className="text-gray-600">Welcome, {user?.name}!</span>
-
-                        <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/receptionist`)}>
-                            <Home className="h-4 w-4 mr-2" />
-                            Dashboard
-                        </Button>
-
-                        <Button variant="outline" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
-                            <User className="h-4 w-4 mr-2" />
-                            Profile
-                        </Button>
-
-                        <Button variant="outline" onClick={onLogout}>
-                            <LogOut className="h-4 w-4 mr-2" />
-                            Logout
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
+            
             <div className="p-6">
                 <div className="max-w-7xl mx-auto">
                     {/* Quick Stats */}

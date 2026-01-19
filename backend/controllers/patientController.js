@@ -2,7 +2,7 @@ import prisma from '../config/connection.js';
 
 // get patient appointments
 export const getMyAppointments = async (req, res) => {
-    try {
+
         // req.user from passport middleware
         const { userId } = req.user;
 
@@ -39,15 +39,12 @@ export const getMyAppointments = async (req, res) => {
 
         res.status(200).json(appointments);
 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
+
 }
 
 // get patient prescriptions
 export const getMyPrescriptions = async (req, res) => {
-    try {
+
         const { userId } = req.user;
 
         const prescriptions = await prisma.prescription.findMany({
@@ -78,15 +75,12 @@ export const getMyPrescriptions = async (req, res) => {
 
          res.status(200).json(prescriptions);
 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
+
 }
 
 // get patient notifications
 export const getNotifications = async (req, res) => {
-    try {
+
         const { userId } = req.user;
 
         const notifications = await prisma.notification.findMany({
@@ -95,15 +89,12 @@ export const getNotifications = async (req, res) => {
         });
 
         res.status(200).json(notifications);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to fetch notifications' });
-    }
+
 }
 
 // get patient billing history
 export const getBillingHistory = async (req, res) => {
-    try {
+
         const { userId } = req.user;
 
         // Find patient record
@@ -121,8 +112,5 @@ export const getBillingHistory = async (req, res) => {
         });
 
         res.status(200).json(bills);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to fetch billing history' });
-    }
+
 }
