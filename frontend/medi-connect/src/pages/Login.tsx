@@ -61,9 +61,9 @@ export default function Login() {
 
       if (!res.ok) {
 
-        if (data.errors) {
+        if (data.errors?.body) {
 
-          setLoginError(data.errors);
+          setLoginError(data.errors.body);
           return;
         }
 
@@ -156,9 +156,9 @@ export default function Login() {
 
       if (!res.ok) {
 
-        if (data.errors) {
+        if (data.errors.body) {
 
-          setFieldErrors(data.errors);
+          setFieldErrors(data.errors.body);
           return;
         }
 

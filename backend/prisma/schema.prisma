@@ -25,11 +25,11 @@ enum UserStatus {
 }
 
 model User {
-  id        String  @id @default(uuid())
-  firstName String  @db.VarChar(200)
-  lastName  String  @db.VarChar(200)
-  email     String  @unique
-  phone     String? @db.VarChar(20)
+  id        String     @id @default(uuid())
+  firstName String     @db.VarChar(200)
+  lastName  String     @db.VarChar(200)
+  email     String     @unique
+  phone     String?    @db.VarChar(20)
   password  String
   status    UserStatus @default(ACTIVE)
 
@@ -46,6 +46,7 @@ model User {
   notifications Notification[]
   doctors       Doctor[]
   patients      Patient[]
+  Payment       Payment[]
 }
 
 // user roles
@@ -122,6 +123,7 @@ model DosageForms {
   dosageId    Int         @id @default(autoincrement())
   name        String      @unique // e.g. Tablet, Syrup, Oral Liquid ,Eye Drops
   defaultUnit DosageTypes
+  status      Boolean     @default(true)
 
   medicines Medicine[]
 }
@@ -132,9 +134,9 @@ model Medicine {
   description String? @db.VarChar(200)
   price       Decimal @db.Decimal(10, 2)
   stock       Int     @default(0)
-
-  categoryId Int?
-  dosageId   Int?
+  minStock    Int     @default(500)
+  categoryId  Int?
+  dosageId    Int?
 
   medicineCategory  MedicineCategory?  @relation(fields: [categoryId], references: [categoryId], onDelete: SetNull)
   medicineDosage    DosageForms?       @relation(fields: [dosageId], references: [dosageId], onDelete: SetNull)
@@ -156,9 +158,11 @@ model InventoryLogs {
   medicineId     String?
   quantity       Int
   changeType     changeType
+  prescriptionId String?
   date           DateTime   @default(now())
 
-  medicine Medicine? @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)
+  prescription Prescription? @relation(fields: [prescriptionId], references: [prescriptionId], onDelete: SetNull)
+  medicine     Medicine?     @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)
 }
 
 // appointment details
@@ -192,14 +196,32 @@ enum PrescriptionStatus {
 model Prescription {
   prescriptionId String             @id @default(uuid())
   appointmentId  String?
-  userId         String
+  userId         String? // optional for patients without accounts
+  anonymousName  String? // optional: name if patient has no account
   notes          String?            @db.Text
   issuedAt       DateTime           @default(now())
   status         PrescriptionStatus @default(PENDING)
 
+  qrToken     String   @unique
+  qrExpiresAt DateTime
+
   appointment       Appointment?       @relation(fields: [appointmentId], references: [appointmentId], onDelete: Cascade)
   prescriptionItems PrescriptionItem[]
-  user              User               @relation(fields: [userId], references: [id])
+  user              User?              @relation(fields: [userId], references: [id])
+  payments          Payment[]
+  InventoryLogs     InventoryLogs[]
+}
+
+model Payment {
+  paymentId      String   @id @default(uuid())
+  prescriptionId String
+  amount         Decimal  @db.Decimal(10, 2)
+  pharmacistId   String
+  paidAt         DateTime @default(now())
+  status         String   @default("PAID")
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [prescriptionId])
+  pharmacist   User         @relation(fields: [pharmacistId], references: [id])
 }
 
 model PrescriptionItem {
@@ -210,6 +232,7 @@ model PrescriptionItem {
   dosage         String?   @db.VarChar(100)
   duration       DateTime?
   instructions   String?   @db.Text
+  price          Decimal?  @db.Decimal(10, 2)
 
   prescription Prescription @relation(fields: [prescriptionId], references: [prescriptionId], onDelete: Cascade)
   medicine     Medicine?    @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)

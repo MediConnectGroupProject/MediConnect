@@ -5,6 +5,7 @@ import cors from "cors";
 import { errorHandler } from './middleware/errorHandlerMiddleware.js';
 import cookieParser from "cookie-parser";
 import passport from './config/passport.js';
+import './middleware/inventoryMiddleware.js'
 
 // import routes here ....
 import authRoutes from './routes/authRoutes.js';
