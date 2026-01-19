@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -6,35 +6,69 @@ import { Input } from '../../components/ui/input';
 
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Calendar, CreditCard, CheckCircle, XCircle, Users, FileText, Home, LogOut, Clock, Search, DollarSign, Receipt } from 'lucide-react';
+import { Calendar, CreditCard, CheckCircle, XCircle, Users, FileText, Home, LogOut, Clock, Search, DollarSign, Receipt, User } from 'lucide-react';
+
+import { useNavigate } from 'react-router-dom';
+import { RouteNames } from '../../utils/RouteNames';
+import { useAuth } from '../../utils/authContext';
 
 export function ReceptionistPortal() {
+    const navigate = useNavigate();
+    const { user, logout } = useAuth();
+
+    
+    const onLogout = () => {
+        logout();
+        navigate(RouteNames.LOGIN);
+    };
+
+
     const [activeTab, setActiveTab] = useState('appointments');
     const [searchTerm, setSearchTerm] = useState('');
+    const [appointments, setAppointments] = useState<any[]>([]);
+    const [pendingBills, setPendingBills] = useState<any[]>([]);
 
-    const todayAppointments = [
-        { id: 1, patient: 'John Smith', doctor: 'Dr. Sarah Johnson', time: '9:00 AM', status: 'confirmed', phone: '+1234567890' },
-        { id: 2, patient: 'Mary Davis', doctor: 'Dr. Mike Chen', time: '10:30 AM', status: 'pending', phone: '+1987654321' },
-        { id: 3, patient: 'Robert Wilson', doctor: 'Dr. Emily Davis', time: '2:00 PM', status: 'confirmed', phone: '+1555666777' },
-        { id: 4, patient: 'Lisa Johnson', doctor: 'Dr. Sarah Johnson', time: '3:30 PM', status: 'cancelled', phone: '+1444555666' },
-        { id: 5, patient: 'David Brown', doctor: 'Dr. Mike Chen', time: '4:00 PM', status: 'pending', phone: '+1333444555' }
-    ];
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const appts = await import('../../api/receptionistApi').then(m => m.getDailyAppointments());
+                setAppointments(appts);
+                const bills = await import('../../api/receptionistApi').then(m => m.getPendingBills());
+                setPendingBills(bills);
+            } catch (error) {
+                console.error("Failed to fetch receptionist data", error);
+            }
+        }
+        fetchData();
+    }, []);
 
-    const paymentQueue = [
-        { id: 1, patient: 'John Smith', service: 'Cardiology Consultation', amount: 150, status: 'pending' },
-        { id: 2, patient: 'Mary Davis', service: 'General Checkup', amount: 100, status: 'pending' },
-        { id: 3, patient: 'Robert Wilson', service: 'Blood Work', amount: 85, status: 'pending' }
-    ];
+    const todayAppointments = appointments.map((a: any) => ({
+        id: a.appointmentId,
+        patient: a.patient?.user ? `${a.patient.user.firstName} ${a.patient.user.lastName}` : 'Unknown',
+        doctor: a.doctor?.user ? `Dr. ${a.doctor.user.firstName}` : 'Unknown',
+        time: new Date(a.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: a.status.toLowerCase(),
+        phone: a.patient?.phone || 'N/A'
+    }));
 
-    const invoiceHistory = [
-        { id: 1, patient: 'Sarah Connor', invoiceNumber: 'INV-2024-001', amount: 200, date: '2024-01-10', status: 'paid' },
-        { id: 2, patient: 'Tom Anderson', invoiceNumber: 'INV-2024-002', amount: 150, date: '2024-01-09', status: 'pending' },
-        { id: 3, patient: 'Alice Walker', invoiceNumber: 'INV-2024-003', amount: 175, date: '2024-01-08', status: 'paid' }
-    ];
+    const paymentQueue = pendingBills.map((b: any) => ({
+        id: b.billId,
+        patient: b.patient?.user ? `${b.patient.user.firstName} ${b.patient.user.lastName}` : 'Unknown',
+        service: b.appointment ? `Consultation with Dr. ${b.appointment.doctor?.user?.firstName}` : 'Medical Service',
+        amount: b.amount,
+        status: b.status.toLowerCase()
+    }));
 
-    const handleConfirmAppointment = (appointmentId: number) => {
-        // In real app, would make API call
-        console.log('Confirming appointment:', appointmentId);
+    const invoiceHistory:any[] = []; // Placeholder until backend invoice fetching is implemented
+
+    const handleConfirmAppointment = async (appointmentId: string) => {
+        try {
+            await import('../../api/receptionistApi').then(m => m.checkInPatient(appointmentId));
+            const appts = await import('../../api/receptionistApi').then(m => m.getDailyAppointments());
+            setAppointments(appts);
+        } catch (error) {
+            console.error("Failed to check-in patient", error);
+        }
     };
 
     const handleCancelAppointment = (appointmentId: number) => {
@@ -42,9 +76,14 @@ export function ReceptionistPortal() {
         console.log('Cancelling appointment:', appointmentId);
     };
 
-    const handleAcceptPayment = (paymentId: number) => {
-        // In real app, would process payment
-        console.log('Processing payment:', paymentId);
+    const handleAcceptPayment = async (billId: string) => {
+        try {
+            await import('../../api/receptionistApi').then(m => m.processPayment(billId, 'CASH')); // Default to CASH
+            const bills = await import('../../api/receptionistApi').then(m => m.getPendingBills());
+            setPendingBills(bills);
+        } catch (error) {
+            console.error("Failed to process payment", error);
+        }
     };
 
     const generateInvoice = (patientName: string) => {
@@ -72,11 +111,18 @@ export function ReceptionistPortal() {
                         <Badge variant="secondary">Receptionist</Badge>
                     </div>
                     <div className="flex items-center gap-4">
-                        <span className="text-gray-600">Welcome, {user.firstName}!</span>
-                        <Button variant="outline" onClick={() => onNavigate('dashboard')}>
+                        <span className="text-gray-600">Welcome, {user?.name}!</span>
+
+                        <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/receptionist`)}>
                             <Home className="h-4 w-4 mr-2" />
                             Dashboard
                         </Button>
+
+                        <Button variant="outline" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+                            <User className="h-4 w-4 mr-2" />
+                            Profile
+                        </Button>
+
                         <Button variant="outline" onClick={onLogout}>
                             <LogOut className="h-4 w-4 mr-2" />
                             Logout
@@ -132,7 +178,9 @@ export function ReceptionistPortal() {
                                 <Users className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">24</div>
+                                <div className="text-2xl font-bold">
+                                    {todayAppointments.filter(a => a.status === 'checked_in' || a.status === 'in_progress').length}
+                                </div>
                                 <p className="text-xs text-muted-foreground">Currently checked in</p>
                             </CardContent>
                         </Card>
@@ -297,58 +345,39 @@ export function ReceptionistPortal() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        <Card className="border-l-4 border-l-blue-500">
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-lg">Dr. Sarah Johnson</CardTitle>
-                                                <CardDescription>Cardiology</CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between">
-                                                        <span>9:00 AM</span>
-                                                        <span className="text-green-600">John Smith</span>
+                                        {Object.entries(todayAppointments.reduce((acc: any, appt: any) => {
+                                            const docName = appt.doctor || 'Unassigned';
+                                            if (!acc[docName]) acc[docName] = [];
+                                            acc[docName].push(appt);
+                                            return acc;
+                                        }, {})).map(([doctor, appts]: [string, any]) => (
+                                            <Card key={doctor} className="border-l-4 border-l-blue-500">
+                                                <CardHeader className="pb-3">
+                                                    <CardTitle className="text-lg">{doctor}</CardTitle>
+                                                    <CardDescription>{(appts[0] as any).specialization || 'General Practice'}</CardDescription>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <div className="space-y-2">
+                                                        {(appts as any[]).map((appt: any) => (
+                                                            <div key={appt.id} className="flex justify-between">
+                                                                <span>{appt.time}</span>
+                                                                <span className={
+                                                                    appt.status === 'confirmed' ? 'text-green-600' :
+                                                                    appt.status === 'cancelled' ? 'text-red-600' : 'text-yellow-600'
+                                                                }>
+                                                                    {appt.patient} {appt.status === 'cancelled' ? '(Cancelled)' : ''} {appt.status === 'pending' ? '(Pending)' : ''}
+                                                                </span>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                    <div className="flex justify-between">
-                                                        <span>3:30 PM</span>
-                                                        <span className="text-red-600">Lisa Johnson (Cancelled)</span>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        <Card className="border-l-4 border-l-green-500">
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-lg">Dr. Mike Chen</CardTitle>
-                                                <CardDescription>General Practice</CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between">
-                                                        <span>10:30 AM</span>
-                                                        <span className="text-yellow-600">Mary Davis (Pending)</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span>4:00 PM</span>
-                                                        <span className="text-yellow-600">David Brown (Pending)</span>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        <Card className="border-l-4 border-l-purple-500">
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="text-lg">Dr. Emily Davis</CardTitle>
-                                                <CardDescription>Dermatology</CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between">
-                                                        <span>2:00 PM</span>
-                                                        <span className="text-green-600">Robert Wilson</span>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                        {todayAppointments.length === 0 && (
+                                            <div className="col-span-3 text-center py-8 text-gray-500">
+                                                No appointments scheduled for today.
+                                            </div>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>

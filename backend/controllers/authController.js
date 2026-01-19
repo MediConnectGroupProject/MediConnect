@@ -138,6 +138,7 @@ const login = async (req, res) => {
     }
 
     // Check if email is verified
+    console.log('Login Debug:', { email: user.email, isVerified: user.isEmailVerified, passMatch: isMatch });
     if (!user.isEmailVerified) {
 
         return res.status(403).json({
@@ -146,9 +147,12 @@ const login = async (req, res) => {
     }
 
     // Generate auth token
+    const roleNames = user.roles.map(r => r.role.name);
+    const primaryRole = getPrimaryRole(roleNames);
+
     const tokenData = {
         id: user.id,
-        role: user.roles,
+        role: roleNames, // token uses flattened roles usually
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
@@ -161,9 +165,10 @@ const login = async (req, res) => {
         user: {
             id: user.id,
             email: user.email,
-            roles: user.roles,
+            roles: roleNames,
             firstName: user.firstName,
-            lastName: user.lastName
+            lastName: user.lastName,
+            primaryRole: primaryRole
         }
     });
 };

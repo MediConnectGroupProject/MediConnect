@@ -25,11 +25,6 @@ export const getUserCount = async () => {
 // get all users
 export const getAllUsers = async (page : number, limit : number ,search : string) => {
 
-    // added to check - loading state
-    // const sleep = (ms: number) =>
-    //     new Promise(resolve => setTimeout(resolve, ms));
-
-    // await sleep(3000);
     const urlParams = new URLSearchParams({
 
         page: String(page),

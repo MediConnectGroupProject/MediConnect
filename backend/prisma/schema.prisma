@@ -76,6 +76,7 @@ model Doctor {
 
   user         User          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  labReports   LabReport[]
 }
 
 enum Gender {
@@ -92,6 +93,8 @@ model Patient {
 
   user         User          @relation(fields: [patientId], references: [id], onDelete: Cascade)
   appointments Appointment[]
+  bills        Bill[]
+  labReports   LabReport[]
 }
 
 // user licence details
@@ -185,7 +188,9 @@ model Appointment {
 // prescription details
 enum PrescriptionStatus {
   PENDING
-  COMPLETED
+  VERIFIED
+  READY
+  DISPENSED
   REJECTED
 }
 
@@ -226,12 +231,58 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// bills // update later
-// model Bill {
-//   billId          String   @id @default(uuid())
-//   patientId       String
-//   receptionistId  String
-//   prescription_id String
-//   total           Decimal  @db.Decimal(10, 2)
-//   created_at      DateTime @default(now())
-// }
+// Bills & Payments
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum BillType {
+  APPOINTMENT
+  LAB_TEST
+  PHARMACY
+}
+
+model Bill {
+  billId        String   @id @default(uuid())
+  patientId     String
+  invoiceNumber String   @unique // e.g. INV-2024-001
+  amount        Decimal  @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+  type          BillType
+  description   String?  @db.VarChar(200)
+  issuedDate    DateTime @default(now())
+  paidDate      DateTime?
+  
+  patient       Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+}
+
+// Lab Reports
+enum ReportStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  READY
+}
+
+enum PriorityLevel {
+  NORMAL
+  URGENT
+}
+
+model LabReport {
+  reportId    String   @id @default(uuid())
+  patientId   String
+  doctorId    String?
+  testType    String   @db.VarChar(200)
+  status      ReportStatus @default(PENDING)
+  priority    PriorityLevel @default(NORMAL)
+  results     String?  @db.Text
+  notes       String?  @db.Text
+  orderedDate DateTime @default(now())
+  completedDate DateTime?
+
+  patient     Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  doctor      Doctor?  @relation(fields: [doctorId], references: [doctorId])
+}

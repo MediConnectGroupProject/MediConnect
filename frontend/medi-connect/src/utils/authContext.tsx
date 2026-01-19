@@ -2,44 +2,41 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Spinner } from "../components/ui/spinner";
 
 
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  roles: string[];
-  primaryRole: string;
-}
+import { getMe, logoutUser } from "../api/authApi";
+import type { User } from "../types";
+
+
+
 
 type AuthContextType = {
 
   user: User | null;
   setUser: (user: User | null) => void;
+  logout: () => void;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const API_URL = `${import.meta.env.VITE_API_URL}`
+
 
 
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          credentials: "include",
-        });
+        // REAL API MODE
+        const data = await getMe();
+        
+        if (data?.user) {
+             setUser(data.user as User);
+        }
 
-        if (!res.ok) throw new Error("Not authenticated");
-
-        const data = await res.json();
-
-        setUser(data.user);
-        localStorage.setItem("user", JSON.stringify(data.user));
       } catch {
         setUser(null);
-        localStorage.removeItem("user");
+        // localStorage.removeItem("user"); // managed by cookie now mostly, but can keep for fallback if logic exists
       } finally {
         setLoading(false);
       }
@@ -50,12 +47,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   if (loading) return <Spinner />; // or spinner
 
+  const logout = async () => {
+    try {
+        await logoutUser();
+    } catch (e) {
+        console.error(e);
+    }
+    setUser(null);
+    localStorage.removeItem("user");
+  };
+
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider value={{ user, setUser, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
+
 
 export function useAuth() {
 

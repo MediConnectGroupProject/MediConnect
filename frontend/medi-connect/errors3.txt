@@ -1,0 +1,6 @@
+src/pages/doctor/DoctorPortal.tsx(8,20): error TS6133: 'Search' is declared but its value is never read.
+src/pages/doctor/DoctorPortal.tsx(8,75): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/layouts/DashboardLayout.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/layouts/PortalLayout.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/patient/PatientPotral.tsx(12,1): error TS6133: 'Input' is declared but its value is never read.
+src/services/mockApi.ts(32,35): error TS6133: 'password' is declared but its value is never read.

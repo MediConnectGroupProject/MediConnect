@@ -34,7 +34,7 @@ export const allUsers = (page: number, limit: number, search: string) => {
         staleTime: 1000 * 60 * 5,
         retry: 1,
         refetchOnWindowFocus: false,
-        keepPreviousData: true,
+        placeholderData: (prev : any) => prev,
     });
 }
 

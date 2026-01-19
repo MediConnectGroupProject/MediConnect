@@ -1,49 +1,99 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { FileText, CreditCard, CheckCircle, Clock, Users, TestTube, Download, Home, LogOut, Upload, Search, DollarSign, Receipt, AlertCircle } from 'lucide-react';
+import { FileText, CreditCard, CheckCircle, TestTube, Download, Home, LogOut, Upload, Search, DollarSign, Receipt, AlertCircle, User } from 'lucide-react';
+
+
+import { useNavigate } from 'react-router-dom';
+import { RouteNames } from '../../utils/RouteNames';
+import { useAuth } from '../../utils/authContext';
+
 
 export function MLTPortal() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
   const [activeTab, setActiveTab] = useState('reports');
   const [reportDetails, setReportDetails] = useState('');
+  const [labReports, setLabReports] = useState<any[]>([]);
 
-  const pendingReports = [
-    { id: 1, patient: 'John Smith', testType: 'Complete Blood Count', orderDate: '2024-01-10', doctor: 'Dr. Sarah Johnson', status: 'in_progress', priority: 'normal' },
-    { id: 2, patient: 'Mary Davis', testType: 'Lipid Panel', orderDate: '2024-01-10', doctor: 'Dr. Mike Chen', status: 'pending', priority: 'urgent' },
-    { id: 3, patient: 'Robert Wilson', testType: 'Thyroid Function', orderDate: '2024-01-09', doctor: 'Dr. Emily Davis', status: 'completed', priority: 'normal' },
-    { id: 4, patient: 'Lisa Johnson', testType: 'Diabetes Panel', orderDate: '2024-01-09', doctor: 'Dr. Sarah Johnson', status: 'ready', priority: 'normal' },
-    { id: 5, patient: 'David Brown', testType: 'Liver Function', orderDate: '2024-01-08', doctor: 'Dr. Mike Chen', status: 'in_progress', priority: 'urgent' }
-  ];
+  useEffect(() => {
+    const fetchReports = async () => {
+        try {
+            const reports = await import('../../api/mltApi').then(m => m.getLabReportQueue());
+            setLabReports(reports);
+        } catch (error) {
+            console.error("Failed to fetch lab reports", error);
+        }
+    }
+    fetchReports();
+  }, []);
 
-  const paymentQueue = [
-    { id: 1, patient: 'John Smith', service: 'Complete Blood Count', amount: 85, status: 'pending' },
-    { id: 2, patient: 'Mary Davis', service: 'Lipid Panel', amount: 120, status: 'pending' },
-    { id: 3, patient: 'Lisa Johnson', service: 'Diabetes Panel', amount: 95, status: 'pending' }
-  ];
 
-  const invoiceHistory = [
-    { id: 1, patient: 'Sarah Connor', invoiceNumber: 'LAB-2024-001', amount: 150, date: '2024-01-10', status: 'paid', testType: 'Full Panel' },
-    { id: 2, patient: 'Tom Anderson', invoiceNumber: 'LAB-2024-002', amount: 85, date: '2024-01-09', status: 'pending', testType: 'Blood Work' },
-    { id: 3, patient: 'Alice Walker', invoiceNumber: 'LAB-2024-003', amount: 110, date: '2024-01-08', status: 'paid', testType: 'Thyroid Test' }
-  ];
 
-  const recentResults = [
-    { id: 1, patient: 'Robert Wilson', testType: 'Thyroid Function', completedDate: '2024-01-10', results: 'Normal', doctor: 'Dr. Emily Davis' },
-    { id: 2, patient: 'Sarah Connor', testType: 'Complete Blood Count', completedDate: '2024-01-09', results: 'Abnormal - See notes', doctor: 'Dr. Sarah Johnson' },
-    { id: 3, patient: 'Tom Anderson', testType: 'Lipid Panel', completedDate: '2024-01-08', results: 'Normal', doctor: 'Dr. Mike Chen' }
-  ];
+  const pendingReports = labReports.map((r: any) => ({
+      id: r.reportId,
+      patient: r.patient?.user ? `${r.patient.user.firstName} ${r.patient.user.lastName}` : 'Unknown',
+      testType: r.testType, // "Blood Test" etc as defined in seed
+      orderDate: new Date(r.orderDate).toLocaleDateString(),
+      doctor: r.doctor?.user ? `Dr. ${r.doctor.user.firstName}` : 'Unknown',
+      status: r.status.toLowerCase(), // PENDING, IN_PROGRESS, COMPLETED
+      priority: r.priority?.toLowerCase() || 'normal',
+      resultData: r.resultData // Keep for reference
+  }));
 
-  const handleUpdateReport = (reportId) => {
-    // In real app, would update report in database
-    console.log('Updating report:', reportId, 'Details:', reportDetails);
-    setReportDetails('');
+  // Placeholder for payments/invoices until backend support added
+  const paymentQueue: any[] = [];
+  const invoiceHistory: any[] = [];
+
+  // Derive recent results from completed reports
+  const recentResults = labReports
+      .filter((r:any) => r.status === 'COMPLETED' || r.status === 'completed')
+      .map((r:any) => ({
+          id: r.reportId,
+          patient: r.patient?.user ? `${r.patient.user.firstName} ${r.patient.user.lastName}` : 'Unknown',
+          testType: r.testType,
+          completedDate: new Date(r.updatedAt).toLocaleDateString(),
+          results: r.resultData || 'Results available',
+          doctor: r.doctor?.user ? `Dr. ${r.doctor.user.firstName}` : 'Unknown'
+      }));
+
+  const handleUpdateReport = async (reportId: string) => {
+    try {
+        await import('../../api/mltApi').then(m => m.updateLabReport(reportId, { status: 'IN_PROGRESS', resultData: reportDetails }));
+        // Refresh local state (optimistic or re-fetch)
+        const reports = await import('../../api/mltApi').then(m => m.getLabReportQueue());
+        setLabReports(reports);
+        setReportDetails('');
+    } catch (error) {
+        console.error("Failed to update report", error);
+    }
   };
 
-  const getStatusColor = (status) => {
+  const handleMarkReady = async (reportId: string) => {
+      try {
+        // Mark as COMPLETED (which acts as Ready for Doctor)
+        await import('../../api/mltApi').then(m => m.updateLabReport(reportId, { status: 'COMPLETED' }));
+        const reports = await import('../../api/mltApi').then(m => m.getLabReportQueue());
+        setLabReports(reports);
+    } catch (error) {
+        console.error("Failed to mark report complete", error);
+    }
+  };
+
+  const handleAcceptPayment = (paymentId: number) => {
+    console.log('Accepting payment:', paymentId);
+  };
+
+  const generateInvoice = (patientName: string) => {
+    console.log('Generating invoice for:', patientName);
+  };
+
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
       case 'ready': return 'bg-blue-100 text-blue-800';
@@ -54,13 +104,14 @@ export function MLTPortal() {
     }
   };
 
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'urgent': return 'bg-red-100 text-red-800';
       case 'normal': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -73,14 +124,24 @@ export function MLTPortal() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-gray-600">Welcome, MLT!</span>
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/mlt`)}>
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
-            <Button variant="outline">
+
+            <Button variant="outline" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </Button>
+
+            <Button variant="outline" onClick={() => {
+              logout();
+              navigate(RouteNames.LOGIN);
+            }}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
+
           </div>
         </div>
       </div>

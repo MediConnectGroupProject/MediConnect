@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
+import { UserProfile } from '../../components/UserProfile';
 import {
   Card,
   CardContent,
@@ -8,7 +9,6 @@ import {
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Input } from "../../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import {
   Calendar,
@@ -18,137 +18,93 @@ import {
   Download,
   Home,
   LogOut,
+  User,
 } from "lucide-react";
 import { Separator } from "../../components/ui/separator";
 
+import { useNavigate } from 'react-router-dom';
+import { RouteNames } from '../../utils/RouteNames';
+import { useAuth } from '../../utils/authContext';
+
+
+import { getMyAppointments, getMyPrescriptions, getNotifications, getBillingHistory } from '../../api/patientApi';
+
 export default function PatientPortal() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("appointments");
 
-  const upcomingAppointments = [
-    {
-      id: 1,
-      doctor: "Dr. Sarah Johnson",
-      specialty: "Cardiology",
-      date: "2024-01-15",
-      time: "2:00 PM",
-      status: "confirmed",
-    },
-    {
-      id: 2,
-      doctor: "Dr. Mike Chen",
-      specialty: "General Practice",
-      date: "2024-01-20",
-      time: "10:30 AM",
-      status: "pending",
-    },
-    {
-      id: 3,
-      doctor: "Dr. Emily Davis",
-      specialty: "Dermatology",
-      date: "2024-01-25",
-      time: "3:15 PM",
-      status: "confirmed",
-    },
-  ];
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [notificationsData, setNotificationsData] = useState<any[]>([]);
+  const [billingData, setBillingData] = useState<any[]>([]);
 
-  const appointmentHistory = [
-    {
-      id: 4,
-      doctor: "Dr. Sarah Johnson",
-      specialty: "Cardiology",
-      date: "2024-01-05",
-      time: "2:00 PM",
-      status: "completed",
-    },
-    {
-      id: 5,
-      doctor: "Dr. Mike Chen",
-      specialty: "General Practice",
-      date: "2023-12-20",
-      time: "11:00 AM",
-      status: "completed",
-    },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+        try {
+            const apptsData = await getMyAppointments();
+            setAppointments(apptsData);
+            
+            const prescData = await getMyPrescriptions();
+            setPrescriptions(prescData);
 
-  const prescriptions = [
-    {
-      id: 1,
-      medication: "Lisinopril 10mg",
-      doctor: "Dr. Sarah Johnson",
-      dateIssued: "2024-01-05",
-      status: "ready",
-      pharmacy: "MediPharm Plus",
-    },
-    {
-      id: 2,
-      medication: "Metformin 500mg",
-      doctor: "Dr. Mike Chen",
-      dateIssued: "2023-12-20",
-      status: "picked_up",
-      pharmacy: "HealthCare Pharmacy",
-    },
-    {
-      id: 3,
-      medication: "Vitamin D3 1000IU",
-      doctor: "Dr. Emily Davis",
-      dateIssued: "2024-01-03",
-      status: "processing",
-      pharmacy: "MediPharm Plus",
-    },
-  ];
+            const notifData = await getNotifications();
+            setNotificationsData(notifData);
 
-  const notifications = [
-    {
-      id: 1,
-      title: "Appointment Reminder",
-      message: "Your appointment with Dr. Sarah Johnson is tomorrow at 2:00 PM",
-      time: "2 hours ago",
-      type: "reminder",
-    },
-    {
-      id: 2,
-      title: "Prescription Ready",
-      message:
-        "Your Lisinopril prescription is ready for pickup at MediPharm Plus",
-      time: "1 day ago",
-      type: "prescription",
-    },
-    {
-      id: 3,
-      title: "Test Results Available",
-      message:
-        "Your blood work results are now available in your health records",
-      time: "3 days ago",
-      type: "results",
-    },
-  ];
+            const billData = await getBillingHistory();
+            setBillingData(billData);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    fetchData();
+  }, []);
 
-  const billingHistory = [
-    {
-      id: 1,
-      service: "Cardiology Consultation",
-      doctor: "Dr. Sarah Johnson",
-      date: "2024-01-05",
-      amount: 150,
-      status: "paid",
-    },
-    {
-      id: 2,
-      service: "Blood Work",
-      doctor: "Dr. Mike Chen",
-      date: "2023-12-20",
-      amount: 85,
-      status: "pending",
-    },
-    {
-      id: 3,
-      service: "Prescription Fill",
-      pharmacy: "MediPharm Plus",
-      date: "2024-01-03",
-      amount: 25,
-      status: "paid",
-    },
-  ];
+  // Derived state for UI
+  const upcomingAppointments = appointments.filter((a: any) => a.status === 'CONFIRMED' || a.status === 'PENDING').map((a: any) => ({
+      id: a.appointmentId,
+      doctor: `${a.doctor.user.firstName} ${a.doctor.user.lastName}`, // Nested from backend include
+      specialty: a.doctor.specialization,
+      date: new Date(a.date).toLocaleDateString(),
+      time: new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: a.status.toLowerCase()
+  }));
+
+  const appointmentHistory = appointments.filter((a: any) => a.status === 'COMPLETED' || a.status === 'CANCELED').map((a: any) => ({
+      id: a.appointmentId,
+      doctor: `${a.doctor.user.firstName} ${a.doctor.user.lastName}`,
+      specialty: a.doctor.specialization,
+      date: new Date(a.date).toLocaleDateString(),
+      time: new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: a.status.toLowerCase()
+  }));
+
+  const prescriptionList = prescriptions.map((p: any) => ({
+        id: p.prescriptionId,
+        medication: p.prescriptionItems.map((i:any) => i.medicineName).join(', '), // Summary
+        doctor: p.appointment?.doctor?.user ? `Dr. ${p.appointment.doctor.user.firstName}` : 'Doctor',
+        dateIssued: new Date(p.issuedAt).toLocaleDateString(),
+        status: "ready", // database status is PENDING/COMPLETED, UI expects ready/picked_up. Map 'PENDING' -> 'ready'?
+        pharmacy: "MediPharm Plus" // Placeholder
+  }));
+
+  const notifications = notificationsData.map((n: any) => ({
+      id: n.notificationId,
+      title: "Notification", // Schema only has message, maybe implement title later or infer from type if added
+      message: n.messages, // Assuming 'messages' is the field for the notification content
+      time: new Date(n.createdAt).toLocaleDateString(), // Simplistic relative time?
+      type: "info"
+  }));
+
+  const billingHistory = billingData.map((b: any) => ({
+      id: b.billId,
+      service: b.description || b.type,
+      doctor: b.type === 'APPOINTMENT' ? 'Dr. Assigned' : null,
+      pharmacy: b.type === 'PHARMACY' ? 'MediPharm Plus' : null,
+      date: new Date(b.issuedDate).toLocaleDateString(),
+      amount: b.amount,
+      status: b.status.toLowerCase()
+  }));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -156,21 +112,31 @@ export default function PatientPortal() {
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button variant="ghost">
+            <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/patient`)}>
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
+
+
             <Separator orientation="vertical" className="h-6" />
             <h1 className="text-xl font-semibold">Patient Portal</h1>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-600">
-              Welcome, Abc Def
+              Welcome, {user?.name || 'Patient'}
             </span>
+
             <Badge variant="secondary">Patient</Badge>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
+              <User className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => {
+              logout();
+              navigate(RouteNames.LOGIN);
+            }}>
               <LogOut className="h-4 w-4" />
             </Button>
+
           </div>
         </div>
       </div>
@@ -303,7 +269,7 @@ export default function PatientPortal() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {prescriptions.map((prescription) => (
+                  {prescriptionList.map((prescription) => (
                     <div
                       key={prescription.id}
                       className="flex items-center justify-between p-4 border rounded-lg"
@@ -439,78 +405,16 @@ export default function PatientPortal() {
             </Card>
           </TabsContent>
 
+
+
+
+
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-6">
             <h2 className="text-2xl font-semibold">Profile & Settings</h2>
-
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                  <CardDescription>
-                    Update your personal details and medical history
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">First Name</label>
-                      <Input
-                        value=""/>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Last Name</label>
-                      <Input
-                        value=""/>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Email</label>
-                      <Input
-                        value=""
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Phone</label>
-                      <Input
-                        value=""/>
-                    </div>
-                  </div>
-                  <Button>Update Information</Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Medical History</CardTitle>
-                  <CardDescription>
-                    Your health records and medical information
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-medium mb-2">Allergies</h3>
-                      <p className="text-sm text-gray-600">
-                        Penicillin, Shellfish
-                      </p>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-medium mb-2">Current Medications</h3>
-                      <p className="text-sm text-gray-600">
-                        Lisinopril 10mg, Metformin 500mg
-                      </p>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <h3 className="font-medium mb-2">Emergency Contact</h3>
-                      <p className="text-sm text-gray-600">
-                        Jane Doe - (555) 123-4567
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <UserProfile isMe={true} role="patient" />
           </TabsContent>
+
         </Tabs>
       </div>
     </div>
