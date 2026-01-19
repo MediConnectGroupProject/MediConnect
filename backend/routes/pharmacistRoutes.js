@@ -4,15 +4,15 @@ import {
     updatePrescriptionStatus,
     getInventory
 } from '../controllers/pharmacistController.js';
-import passport from 'passport';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { requireRole } from '../middlewares/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Middleware
-const protect = passport.authenticate('jwt', { session: false });
 
-router.get('/prescriptions', protect, getPrescriptionQueue);
-router.patch('/prescriptions/:prescriptionId/status', protect, updatePrescriptionStatus);
-router.get('/inventory', protect, getInventory);
+router.get('/prescriptions', protect,requireRole('pharmacist'), asyncHandler(getPrescriptionQueue));
+router.patch('/prescriptions/:prescriptionId/status', protect,requireRole('pharmacist'), asyncHandler(updatePrescriptionStatus));
+router.get('/inventory', protect,requireRole('pharmacist'), asyncHandler(getInventory));
 
 export default router;

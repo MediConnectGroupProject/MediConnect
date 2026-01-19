@@ -138,7 +138,6 @@ const login = async (req, res) => {
     }
 
     // Check if email is verified
-    console.log('Login Debug:', { email: user.email, isVerified: user.isEmailVerified, passMatch: isMatch });
     if (!user.isEmailVerified) {
 
         return res.status(403).json({

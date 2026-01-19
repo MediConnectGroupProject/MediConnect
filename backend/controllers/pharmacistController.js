@@ -2,7 +2,7 @@ import prisma from '../config/connection.js';
 
 // Get all prescriptions (for verification/dispensing)
 export const getPrescriptionQueue = async (req, res) => {
-    try {
+
         const queue = await prisma.prescription.findMany({
             where: {
                 status: {
@@ -37,15 +37,12 @@ export const getPrescriptionQueue = async (req, res) => {
             }
         });
         res.status(200).json(queue);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to fetch prescription queue' });
-    }
+
 }
 
 // Update prescription status
 export const updatePrescriptionStatus = async (req, res) => {
-    try {
+
         const { prescriptionId } = req.params;
         const { status } = req.body;
 
@@ -60,15 +57,12 @@ export const updatePrescriptionStatus = async (req, res) => {
         }
 
         res.status(200).json(updated);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to update status' });
-    }
+
 }
 
 // Get Inventory
 export const getInventory = async (req, res) => {
-    try {
+
         const inventory = await prisma.medicine.findMany({
             include: {
                 medicineCategory: true,
@@ -76,8 +70,5 @@ export const getInventory = async (req, res) => {
             }
         });
         res.status(200).json(inventory);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to fetch inventory' });
-    }
+
 }

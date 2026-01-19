@@ -2,7 +2,7 @@ import prisma from '../config/connection.js';
 
 // get doctor stats
 export const getDoctorStats = async (req, res) => {
-    try {
+
         const { userId } = req.user;
 
         // get current date
@@ -58,15 +58,12 @@ export const getDoctorStats = async (req, res) => {
             totalPatients: totalPatients.length
         });
 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
+
 }
 
 // get appointments
 export const getAppointments = async (req, res) => {
-    try {
+
         const { userId } = req.user;
         const { date, status } = req.query;
 
@@ -112,15 +109,12 @@ export const getAppointments = async (req, res) => {
 
         res.status(200).json(appointments);
 
-    } catch (error) {
-         console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
+
 }
 
 // get up next appointment
 export const getUpNextAppointment = async (req, res) => {
-    try {
+
         const { userId } = req.user;
         const now = new Date();
 
@@ -155,15 +149,12 @@ export const getUpNextAppointment = async (req, res) => {
 
         res.status(200).json(appointment);
 
-    } catch (error) {
-         console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
+
 }
 
 // update appointment status
 export const updateAppointmentStatus = async (req, res) => { 
-    try {
+
         const { appointmentId } = req.params;
         const { status } = req.body;
 
@@ -174,15 +165,12 @@ export const updateAppointmentStatus = async (req, res) => {
 
         res.status(200).json(updatedAppointment);
 
-    } catch (error) {
-         console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
+
 }
 
 // create prescription
 export const createPrescription = async (req, res) => {
-    try {
+
         const { userId } = req.user; // Doctor ID
         const { patientId, appointmentId, items, notes } = req.body;
 
@@ -214,14 +202,11 @@ export const createPrescription = async (req, res) => {
 
         res.status(201).json(prescription);
 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to create prescription' });
-    }
+
 }
 // get patient profile
 export const getPatientById = async (req, res) => {
-    try {
+
         const { patientId } = req.params;
 
         const patient = await prisma.patient.findUnique({
@@ -293,8 +278,5 @@ export const getPatientById = async (req, res) => {
 
         res.status(200).json(profileData);
 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
+
 }

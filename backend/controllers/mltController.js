@@ -2,7 +2,7 @@ import prisma from '../config/connection.js';
 
 // Get Lab Reports Queue (Pending/In Progress)
 export const getLabReportQueue = async (req, res) => {
-    try {
+
         const queue = await prisma.labReport.findMany({
             where: {
                 status: {
@@ -36,15 +36,12 @@ export const getLabReportQueue = async (req, res) => {
             }
         });
         res.status(200).json(queue);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to fetch lab report queue' });
-    }
+
 }
 
 // Update Lab Report Status
 export const updateLabReport = async (req, res) => {
-    try {
+
         const { reportId } = req.params;
         const { status, resultData, comments } = req.body;
 
@@ -59,8 +56,5 @@ export const updateLabReport = async (req, res) => {
         });
 
         res.status(200).json(updated);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to update lab report' });
-    }
+
 }
