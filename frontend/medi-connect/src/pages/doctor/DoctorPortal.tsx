@@ -5,11 +5,9 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Calendar, Home, LogOut, CheckCircle, Undo, Plus, QrCode, User } from 'lucide-react';
-import { Separator } from '../../components/ui/separator';
+import { Calendar, CheckCircle, Undo, Plus, QrCode } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { RouteNames } from '../../utils/RouteNames';
-import { useAuth } from '../../utils/authContext';
 import { UserProfile } from '../../components/UserProfile';
 import {
   Dialog,
@@ -25,12 +23,7 @@ import { useLocation } from 'react-router-dom';
 
 export default function DoctorPortal() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
   const location = useLocation();
-
-  const handleDashboardNavigation = () => {
-     navigate(`${RouteNames.DASHBOARD}/doctor`);
-  };
 
   const [activeTab, setActiveTab] = useState('schedule');
 
@@ -56,7 +49,7 @@ export default function DoctorPortal() {
                 id: apt.appointmentId,
                 patientId: apt.patientId, // Added patientId
                 patient: apt.patient?.user ? `${apt.patient.user.firstName} ${apt.patient.user.lastName}` : 'Unknown',
-                time: new Date(apt.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                time: new Date(apt.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: apt.status.toLowerCase(),
                 type: 'Consultation', // Default
                 duration: '30 min'
@@ -123,34 +116,7 @@ export default function DoctorPortal() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={handleDashboardNavigation}>
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
 
-
-            <Separator orientation="vertical" className="h-6" />
-            <h1 className="text-xl font-semibold">Doctor Portal</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Dr. Abc Def</span>
-            <Badge variant="secondary">Doctor</Badge>
-            <Button variant="ghost" size="sm" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
-              <User className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => {
-              logout();
-              navigate(RouteNames.LOGIN);
-            }}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-
-          </div>
-        </div>
-      </div>
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -251,7 +217,7 @@ export default function DoctorPortal() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Appointments - January 15, 2024</CardTitle>
+                <CardTitle>Appointments - {new Date().toLocaleDateString()}</CardTitle>
                 <CardDescription>Your scheduled appointments for today</CardDescription>
               </CardHeader>
               <CardContent>
@@ -270,8 +236,8 @@ export default function DoctorPortal() {
                               appointment.status === 'urgent' ? 'destructive' :
                               appointment.status === 'in_progress' ? 'default' : 
                               appointment.status === 'completed' ? 'secondary' : 'outline'
-                            }>
-                              {appointment.status.replace('_', ' ')}
+                            } className={appointment.status === 'in_progress' ? 'bg-blue-600 hover:bg-blue-700' : ''}>
+                              {appointment.status.replace('_', ' ').toUpperCase()}
                             </Badge>
                           </div>
                           <p className="text-sm text-gray-600">{appointment.type}</p>

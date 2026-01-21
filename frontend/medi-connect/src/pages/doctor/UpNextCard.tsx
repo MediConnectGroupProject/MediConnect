@@ -2,57 +2,82 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { getUpNextAppointment } from '../../api/doctorApi';
+import { getUpNextAppointment, updateAppointmentStatus } from '../../api/doctorApi';
 import type { Appointment } from '../../types';
 import { Badge } from '../../components/ui/badge';
 import { Clock, PlayCircle, User } from 'lucide-react';
-import { RouteNames } from '../../utils/RouteNames';
+import toast from 'react-hot-toast';
+import { ActiveConsultationCard } from './ActiveConsultationCard';
 
 export function UpNextCard() {
   const navigate = useNavigate();
+  const [activeAppt, setActiveAppt] = useState<Appointment | null>(null);
   const [nextAppt, setNextAppt] = useState<Appointment | null>(null);
 
+  const fetchAppointments = async () => {
+    try {
+        const data = await getUpNextAppointment();
+        if (data) {
+            const mapped: Appointment = {
+                id: data.appointmentId,
+                patientName: `${data.patient.user.firstName} ${data.patient.user.lastName}`,
+                patientId: data.patientId,
+                date: data.date,
+                time: new Date(data.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: data.status,
+                reason: "Regular Consultation",
+                doctorId: data.doctorId,
+                doctorName: ""
+            };
+
+            if (mapped.status === 'IN_PROGRESS') {
+                setActiveAppt(mapped);
+                setNextAppt(null); 
+            } else {
+                setActiveAppt(null);
+                setNextAppt(mapped);
+            }
+        } else {
+            setActiveAppt(null);
+            setNextAppt(null);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+  };
 
   useEffect(() => {
-    const fetchNext = async () => {
-        try {
-            const data = await getUpNextAppointment();
-            if (data) {
-                setNextAppt({
-                    id: data.appointmentId,
-                    patientName: `${data.patient.user.firstName} ${data.patient.user.lastName}`,
-                    patientId: data.patientId,
-                    date: data.date,
-                    time: new Date(data.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    status: data.status,
-                    reason: "Regular Consultation", // Placeholder as schema might miss it
-                    doctorId: data.doctorId,
-                    doctorName: "" // Not displayed in this card
-                });
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
-    fetchNext();
+    fetchAppointments();
+    const interval = setInterval(fetchAppointments, 5000); 
+    return () => clearInterval(interval);
   }, []);
+
+  // Use the new component for Active state
+  if (activeAppt) {
+      return (
+          <ActiveConsultationCard 
+            appointment={activeAppt} 
+            onConsultationComplete={fetchAppointments} 
+          />
+      );
+  }
 
   if (!nextAppt) return null;
 
   return (
-    <Card className="mb-6 border-l-4 border-l-blue-600 bg-blue-50/50">
+    <Card className="mb-6 border-l-4 border-l-green-600 bg-white shadow-sm">
       <CardContent className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-6">
             <div className="relative">
-                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-sm">
-                    <User className="h-8 w-8 text-blue-600" />
+                <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center border-2 border-white shadow-sm">
+                    <User className="h-8 w-8 text-gray-600" />
                 </div>
                 <div className="absolute -bottom-1 -right-1 bg-green-500 h-4 w-4 rounded-full border-2 border-white"></div>
             </div>
             
             <div>
                 <div className="flex items-center gap-2 mb-1">
-                    <Badge className="bg-blue-600 hover:bg-blue-700">UP NEXT</Badge>
+                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">UP NEXT</Badge>
                     <span className="flex items-center text-sm text-gray-600">
                         <Clock className="h-3 w-3 mr-1" />
                         {nextAppt.time}
@@ -65,9 +90,13 @@ export function UpNextCard() {
 
         <Button 
             size="lg" 
-            className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
-            onClick={() => {
-                navigate(RouteNames.DOCTOR_PORTAL, { state: { tab: 'prescriptions', patientId: nextAppt.patientId } });
+            className="bg-green-600 hover:bg-green-700 shadow-sm"
+            onClick={async () => {
+                try {
+                     await updateAppointmentStatus(nextAppt.id, 'IN_PROGRESS');
+                     toast.success('Consultation Started');
+                     fetchAppointments();
+                } catch(e) { toast.error('Failed to start'); }
             }}
         >
             <PlayCircle className="h-5 w-5 mr-2" />

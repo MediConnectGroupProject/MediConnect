@@ -16,7 +16,7 @@ export interface Appointment {
   doctorName: string;
   date: string; // ISO date string
   time: string;
-  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'IN_PROGRESS';
   reason?: string;
 }
 

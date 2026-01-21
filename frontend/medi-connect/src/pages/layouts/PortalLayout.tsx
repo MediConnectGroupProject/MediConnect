@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
-import { Home, LogOut } from 'lucide-react';
+import { Home, LogOut, User } from 'lucide-react';
 import { Separator } from '@radix-ui/react-separator';
 import { useAuth } from '../../utils/authContext';
 import { RouteNames } from '../../utils/RouteNames';
@@ -19,10 +19,11 @@ export function PortalLayout() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
+            {/* Header */}
             <div className="bg-white border-b border-gray-200 px-6 py-4">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" onClick={() => navigate(`${RouteNames.DASHBOARD}/${primaryRole}`)}>
+                        <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/${primaryRole}`)}>
                             <Home className="h-4 w-4 mr-2" />
                             Dashboard
                         </Button>
@@ -36,7 +37,10 @@ export function PortalLayout() {
                                 primaryRole === 'doctor' ? 'default' :
                                     primaryRole === 'pharmacist' ? 'secondary' : 'outline'
                         }>{primaryRole}</Badge>
-                        <Button className='cursor-pointer' variant="ghost" size="sm" disabled={_logoutMutation.isPending} onClick={() => { _logoutMutation.mutate(); }}>
+                         <Button variant="ghost" size="sm" onClick={() => navigate(RouteNames.PROFILE)}>
+                            <User className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" disabled={_logoutMutation.isPending} onClick={() => { _logoutMutation.mutate(); }}>
                             {_logoutMutation.isPending ? <Spinner /> : <LogOut className="h-4 w-4" />}
                         </Button>
                     </div>
