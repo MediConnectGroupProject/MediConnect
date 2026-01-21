@@ -6,7 +6,7 @@ import { Separator } from '@radix-ui/react-separator';
 import { useAuth } from '../../utils/authContext';
 import { RouteNames } from '../../utils/RouteNames';
 import { Badge } from '../../components/ui/badge';
-import { useLogoutMutation } from '../../hooks/commonFunctions';
+import { useLogoutMutation } from '../../hooks/commonFunctionsHook';
 import { Spinner } from '../../components/ui/spinner';
 
 export function PortalLayout() {
@@ -33,11 +33,11 @@ export function PortalLayout() {
                         <span className="text-sm text-gray-600">{user?.name}</span>
                         <Badge variant={
                             primaryRole === 'admin' ? 'destructive' :
-                              primaryRole === 'doctor' ? 'default' :
-                                primaryRole === 'pharmacist' ? 'secondary' : 'outline'
-                          }>{primaryRole}</Badge>
-                        <Button className='cursor-pointer' variant="ghost" size="sm" disabled={_logoutMutation.isPending} onClick={() => {_logoutMutation.mutate();}}>
-                              {_logoutMutation.isPending ? <Spinner /> : <LogOut className="h-4 w-4" />}
+                                primaryRole === 'doctor' ? 'default' :
+                                    primaryRole === 'pharmacist' ? 'secondary' : 'outline'
+                        }>{primaryRole}</Badge>
+                        <Button className='cursor-pointer' variant="ghost" size="sm" disabled={_logoutMutation.isPending} onClick={() => { _logoutMutation.mutate(); }}>
+                            {_logoutMutation.isPending ? <Spinner /> : <LogOut className="h-4 w-4" />}
                         </Button>
                     </div>
                 </div>

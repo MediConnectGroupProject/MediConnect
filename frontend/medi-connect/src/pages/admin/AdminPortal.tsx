@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Shield, Search, Plus, Home, LogOut } from 'lucide-react';
-import { addRoleMutation, allRoles, allUsers, updateRoleMutation, updateUserStateMutation } from '../../hooks/adminUsers';
+import { addRoleMutation, allRoles, allUsers, updateRoleMutation, updateUserStateMutation } from '../../hooks/adminUsersHook';
 import { PaginationLay } from '../layouts/PaginationLay';
 import toast from 'react-hot-toast';
 import { Spinner } from '../../components/ui/spinner';
