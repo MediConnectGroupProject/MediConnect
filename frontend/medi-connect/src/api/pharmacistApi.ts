@@ -26,14 +26,47 @@ export const updatePrescriptionStatus = async (prescriptionId: string, status: s
     return res.json();
 }
 
-// Get Inventory
-export const getInventory = async () => {
-    const res = await fetch(`${API_URL}/inventory`, {
+
+// export const getInventory = async () => {
+//     const res = await fetch(
+//         `${API_URL}/inventory`, {
+//         headers: {
+//             'Content-Type': 'application/json',
+//         },
+//         credentials: 'include'
+//     });
+    
+//     if (!res.ok) throw new Error('Failed to fetch inventory');
+//     return res.json();
+// }
+
+// get inventory
+export const getInventory = async (page: number, limit: number, search: string) => {
+    
+    const urlParams = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+    });
+
+    if (search) {
+        urlParams.append('search', encodeURIComponent(search));
+    }
+
+    const res = await fetch(
+        `${API_URL}/inventory?${urlParams.toString()}`, {
         headers: {
             'Content-Type': 'application/json',
         },
         credentials: 'include'
     });
-    if (!res.ok) throw new Error('Failed to fetch inventory');
-    return res.json();
+
+    const data = await res.json();
+
+    if (!res.ok) {
+
+        throw new Error(data?.message || 'Failed to fetch inventory');
+    }
+
+    return data;
 }
+

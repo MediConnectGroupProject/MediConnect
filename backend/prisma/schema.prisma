@@ -119,6 +119,8 @@ enum DosageTypes {
   mg
   ml
   drops
+  capsule
+  tablet
 }
 
 model DosageForms {
@@ -159,7 +161,9 @@ model InventoryLogs {
   medicineId     String?
   quantity       Int
   changeType     changeType
-  date           DateTime   @default(now())
+  expiryDate     DateTime?   @db.Date
+  date           DateTime   @db.Date @default(now())
+  status         Boolean    @default(false) // true check after exp
 
   medicine Medicine? @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)
 }

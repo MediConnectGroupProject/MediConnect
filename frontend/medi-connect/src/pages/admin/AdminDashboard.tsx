@@ -3,10 +3,9 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from 'react-hot-toast';
-import { userCount } from "../../hooks/adminUsers";
+import { userCount } from "../../hooks/adminUsersHook";
 import { useEffect } from "react";
 import { RouteNames } from "../../utils/RouteNames";
-
 
 
 export default function AdminDashboard() {

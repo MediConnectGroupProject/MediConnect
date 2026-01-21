@@ -23,7 +23,7 @@ export const getUserCount = async () => {
 }
 
 // get all users
-export const getAllUsers = async (page : number, limit : number ,search : string) => {
+export const getAllUsers = async (page: number, limit: number, search: string) => {
 
     const urlParams = new URLSearchParams({
 
@@ -57,7 +57,7 @@ export const getAllUsers = async (page : number, limit : number ,search : string
 }
 
 // get all roles
-export const getAllRoles = async () => { 
+export const getAllRoles = async () => {
 
     const res = await fetch(
         `${API_URL}/roles`,
@@ -81,7 +81,7 @@ export const getAllRoles = async () => {
 };
 
 // change role status
-export const changeRoleStatus = async (roleId: number,userId: string , status: string) => {
+export const changeRoleStatus = async (roleId: number, userId: string, status: string) => {
 
     const res = await fetch(
         `${API_URL}/roles/user/${userId}/role/${roleId}`,
@@ -100,16 +100,16 @@ export const changeRoleStatus = async (roleId: number,userId: string , status: s
     const data = await res.json();
 
     if (!res.ok) {
-        
-        throw new Error(data.message ||"Update role status failed");
+
+        throw new Error(data.message || "Update role status failed");
     }
 
     return data;
 };
 
 // add role
-export const addRole = async (roleName: string,userId: string) => {
-    
+export const addRole = async (roleName: string, userId: string) => {
+
     const res = await fetch(`${API_URL}/users/${userId}`, {
         method: "POST",
         headers: {
@@ -124,8 +124,8 @@ export const addRole = async (roleName: string,userId: string) => {
     const data = await res.json();
 
     if (!res.ok) {
-        
-        throw new Error(data.message ||"Add role failed");
+
+        throw new Error(data.message || "Add role failed");
     }
 
     return data;
@@ -133,14 +133,14 @@ export const addRole = async (roleName: string,userId: string) => {
 
 // change user status
 export const changeUserStatus = async (userId: string, status: string) => {
-    
+
     const res = await fetch(`${API_URL}/users/${userId}`, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json"
         },
         credentials: "include",
-        body: JSON.stringify({ status :status })
+        body: JSON.stringify({ status: status })
     });
 
     const data = await res.json();

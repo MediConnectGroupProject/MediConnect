@@ -15,8 +15,6 @@ export function DoctorStats() {
     const loadStats = async () => {
         try {
             const data = await getDoctorStats();
-            // Map backend data
-            // calculated "appointments" as total for today = pending + seen (roughly)
             setStats({
                 appointments: (data.pendingAppointments || 0) + (data.patientsSeen || 0), 
                 patientsSeen: data.patientsSeen || 0,
