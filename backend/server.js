@@ -14,6 +14,7 @@ import patientRoutes from './routes/patientRoutes.js';
 import pharmacistRoutes from './routes/pharmacistRoutes.js';
 import mltRoutes from './routes/mltRoutes.js';
 import receptionistRoutes from './routes/receptionistRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 
 
@@ -44,6 +45,7 @@ app.use('/api/patient', patientRoutes);
 app.use('/api/pharmacist', pharmacistRoutes);
 app.use('/api/mlt', mltRoutes);
 app.use('/api/receptionist', receptionistRoutes);
+app.use('/api/users', userRoutes);
 
 
 app.use(errorHandler);

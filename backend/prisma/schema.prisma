@@ -73,6 +73,8 @@ model Doctor {
   doctorId       String  @id
   specialization String  @db.VarChar(200)
   availability   Boolean @default(true) // default available
+  bio            String? @db.Text
+  qualifications String? @db.Text
 
   user         User          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   appointments Appointment[]
@@ -90,6 +92,9 @@ model Patient {
   dob       DateTime @db.Date
   address   String   @db.VarChar(200)
   gender    Gender
+  bloodType String?  @db.VarChar(10)
+  allergies String?  @db.Text
+  conditions String? @db.Text
 
   user         User          @relation(fields: [patientId], references: [id], onDelete: Cascade)
   appointments Appointment[]
