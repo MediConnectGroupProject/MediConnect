@@ -2,17 +2,13 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Spinner } from "../components/ui/spinner";
 
 
-import { getMe, logoutUser } from "../api/authApi";
+import { getMe } from "../api/authApi";
 import type { User } from "../types";
-
-
-
 
 type AuthContextType = {
 
   user: User | null;
   setUser: (user: User | null) => void;
-  logout: () => void;
 }
 
 
@@ -27,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
-        // REAL API MODE
+        
         const data = await getMe();
         
         if (data?.user) {
@@ -36,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       } catch {
         setUser(null);
-        // localStorage.removeItem("user"); // managed by cookie now mostly, but can keep for fallback if logic exists
+      // localStorage.removeItem("user"); // managed by cookie now mostly, but can keep for fallback if logic exists
       } finally {
         setLoading(false);
       }
@@ -47,18 +43,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   if (loading) return <Spinner />; // or spinner
 
-  const logout = async () => {
-    try {
-        await logoutUser();
-    } catch (e) {
-        console.error(e);
-    }
-    setUser(null);
-    localStorage.removeItem("user");
-  };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout }}>
+    <AuthContext.Provider value={{ user, setUser }}>
       {children}
     </AuthContext.Provider>
   );

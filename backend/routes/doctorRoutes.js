@@ -7,18 +7,17 @@ import {
     createPrescription,
     getPatientById
 } from '../controllers/doctorController.js';
-import passport from 'passport';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { requireRole } from '../middleware/requireRole.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Middleware to protect routes (require authentication)
-const protect = passport.authenticate('jwt', { session: false });
-
-router.get('/stats', protect, getDoctorStats);
-router.get('/appointments', protect, getAppointments);
-router.get('/appointments/up-next', protect, getUpNextAppointment);
-router.patch('/appointments/:appointmentId/status', protect, updateAppointmentStatus);
-router.post('/prescriptions', protect, createPrescription);
-router.get('/patients/:patientId', protect, getPatientById);
+router.get('/stats',protect, requireRole('doctor'), asyncHandler(getDoctorStats));
+router.get('/appointments',protect, requireRole('doctor'), asyncHandler(getAppointments));
+router.get('/appointments/up-next',protect, requireRole('doctor'), asyncHandler(getUpNextAppointment));
+router.patch('/appointments/:appointmentId/status',protect, requireRole('doctor'), asyncHandler(updateAppointmentStatus));
+router.post('/prescriptions',protect, requireRole('doctor'), asyncHandler(createPrescription));
+router.get('/patients/:patientId',protect, requireRole('doctor'), asyncHandler(getPatientById));
 
 export default router;

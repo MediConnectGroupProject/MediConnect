@@ -19,7 +19,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: (
-        <PublicRoute><LandingPage /></PublicRoute>
+        <LandingPage />
     )
   },
   {
@@ -55,7 +55,7 @@ const router = createBrowserRouter([
           ),
         })),
         {
-            path: 'profile', // /portal/profile if we use portal layout for this
+            path: 'profile',
             element: <ProfilePage />
         }
     ]
@@ -78,7 +78,7 @@ const router = createBrowserRouter([
         })),
         // Common Routes for Dashboard
         {
-            path: 'profile', // /dashboard/profile
+            path: 'profile',// /dashboard/profile
             element: <ProfilePage />
         }
     ]

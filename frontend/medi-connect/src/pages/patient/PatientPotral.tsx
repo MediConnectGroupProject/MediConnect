@@ -31,7 +31,7 @@ import { getMyAppointments, getMyPrescriptions, getNotifications, getBillingHist
 
 export default function PatientPortal() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("appointments");
 
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -108,38 +108,6 @@ export default function PatientPortal() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate(`${RouteNames.DASHBOARD}/patient`)}>
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
-
-
-            <Separator orientation="vertical" className="h-6" />
-            <h1 className="text-xl font-semibold">Patient Portal</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
-              Welcome, {user?.name || 'Patient'}
-            </span>
-
-            <Badge variant="secondary">Patient</Badge>
-            <Button variant="ghost" size="sm" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
-              <User className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => {
-              logout();
-              navigate(RouteNames.LOGIN);
-            }}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-
-          </div>
-        </div>
-      </div>
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>

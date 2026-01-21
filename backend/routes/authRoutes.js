@@ -1,5 +1,4 @@
 import express from 'express';
-const app = express();
 const router = express.Router();
 
 import { login, register, logout, verifyEmail ,getMe } from '../controllers/authController.js';

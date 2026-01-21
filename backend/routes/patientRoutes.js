@@ -5,16 +5,16 @@ import {
     getNotifications,
     getBillingHistory
 } from '../controllers/patientController.js';
-import passport from 'passport';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { requireRole } from '../middleware/requireRole.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Middleware
-const protect = passport.authenticate('jwt', { session: false });
 
-router.get('/appointments', protect, getMyAppointments);
-router.get('/prescriptions', protect, getMyPrescriptions);
-router.get('/notifications', protect, getNotifications);
-router.get('/billing', protect, getBillingHistory);
+router.get('/appointments', protect,requireRole('patient'), asyncHandler(getMyAppointments));
+router.get('/prescriptions', protect,requireRole('patient'), asyncHandler(getMyPrescriptions));
+router.get('/notifications', protect,requireRole('patient'), asyncHandler(getNotifications));
+router.get('/billing', protect,requireRole('patient'), asyncHandler(getBillingHistory));
 
 export default router;

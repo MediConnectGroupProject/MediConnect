@@ -22,3 +22,4 @@ export const logout = async () => {
     return data;
 
 }
+
