@@ -73,8 +73,12 @@ model Doctor {
   doctorId       String  @id
   specialization String  @db.VarChar(200)
   availability   Boolean @default(true) // default available
+  workingHours   Json?
   bio            String? @db.Text
   qualifications String? @db.Text
+  experience     Int?
+  hospitals      Json?
+  proficiency    Json?
 
   user         User          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   appointments Appointment[]
@@ -88,9 +92,9 @@ enum Gender {
 
 model Patient {
   patientId String   @id
-  nic       String   @db.VarChar(12)
+  nic       String?   @db.VarChar(12)
   dob       DateTime @db.Date
-  address   String   @db.VarChar(200)
+  address   String?   @db.VarChar(200)
   gender    Gender
   bloodType String?  @db.VarChar(10)
   allergies String?  @db.Text
@@ -177,6 +181,7 @@ model InventoryLogs {
 enum AppointmentStatus {
   PENDING
   CONFIRMED
+  IN_PROGRESS
   COMPLETED
   CANCELED
 }

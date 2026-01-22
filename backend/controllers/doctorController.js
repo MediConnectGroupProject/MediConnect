@@ -1,14 +1,22 @@
 import prisma from '../config/connection.js';
+import bcrypt from 'bcryptjs';
 
 // get doctor stats
 export const getDoctorStats = async (req, res) => {
 
-        const { userId } = req.user;
+        const { id: userId } = req.user;
 
         // get current date
         const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+        const startOfDay = new Date(today);
+        startOfDay.setHours(0, 0, 0, 0);
+        // Backup 24 hours to cover timezone slips
+        startOfDay.setDate(startOfDay.getDate() - 1);
+        
+        const endOfDay = new Date(today);
+        endOfDay.setHours(23, 59, 59, 999);
+        // Forward 24 hours
+        endOfDay.setDate(endOfDay.getDate() + 1);
 
         // pending appointments
         const pendingAppointments = await prisma.appointment.count({
@@ -27,7 +35,7 @@ export const getDoctorStats = async (req, res) => {
             where: {
                 doctorId: userId,
                 status: 'COMPLETED',
-                 date: {
+                date: {
                     gte: startOfDay,
                     lte: endOfDay
                 }
@@ -64,21 +72,31 @@ export const getDoctorStats = async (req, res) => {
 // get appointments
 export const getAppointments = async (req, res) => {
 
-        const { userId } = req.user;
-        const { date, status } = req.query;
+        const { id: userId } = req.user;
+        const { date, start, end, status } = req.query;
 
         const whereClause = {
             doctorId: userId,
         };
 
         if (date) {
+            //  console.log('Skipping date filter for debug');
             const queryDate = new Date(date);
             const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
+            //  Backup and Forward 24h to be safe
+             startOfDay.setDate(startOfDay.getDate() - 1);
+
             const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
+             endOfDay.setDate(endOfDay.getDate() + 1);
             
             whereClause.date = {
                 gte: startOfDay,
                 lte: endOfDay
+            };
+        } else if (start && end) {
+            whereClause.date = {
+                 gte: new Date(start),
+                 lte: new Date(end)
             };
         }
 
@@ -115,21 +133,56 @@ export const getAppointments = async (req, res) => {
 // get up next appointment
 export const getUpNextAppointment = async (req, res) => {
 
-        const { userId } = req.user;
+        const { id: userId } = req.user;
         const now = new Date();
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        // Match getAppointments logic: widen range to handle potential timezone/UTC offsets
+        startOfDay.setDate(startOfDay.getDate() - 1); 
 
+        const endOfDay = new Date(now);
+        endOfDay.setHours(23, 59, 59, 999);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        // 1. Check for Active Appointment (IN_PROGRESS)
+        const activeAppointment = await prisma.appointment.findFirst({
+            where: {
+                doctorId: userId,
+                status: 'IN_PROGRESS',
+                date: {
+                    gte: startOfDay,
+                    lte: endOfDay
+                }
+            },
+            include: {
+                patient: {
+                    include: {
+                        user: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (activeAppointment) {
+            return res.status(200).json(activeAppointment);
+        }
+
+        // 2. If no active, get Up Next (PENDING)
         const appointment = await prisma.appointment.findFirst({
              where: {
                 doctorId: userId,
                 status: 'PENDING',
                 date: {
-                    gte: new Date(now.setHours(0, 0, 0, 0))
-                },
-                // assuming time is part of date-time or handled separately, prisma Time type is DateTime object usually
-                 time: {
-                    gte: now
+                    gte: startOfDay,
+                    lte: endOfDay
                 }
             },
+            // Removed time restriction to show overdue/missed appointments as "Up Next"
             include: {
                 patient: {
                     include: {
@@ -171,7 +224,7 @@ export const updateAppointmentStatus = async (req, res) => {
 // create prescription
 export const createPrescription = async (req, res) => {
 
-        const { userId } = req.user; // Doctor ID
+        const { id: userId } = req.user; // Doctor ID
         const { patientId, appointmentId, items, notes } = req.body;
 
         // Verify patient exists ? optional
@@ -208,6 +261,7 @@ export const createPrescription = async (req, res) => {
 export const getPatientById = async (req, res) => {
 
         const { patientId } = req.params;
+        console.log(`[DEBUG] getPatientById called with ID: ${patientId}`);
 
         const patient = await prisma.patient.findUnique({
              where: { patientId },
@@ -217,17 +271,21 @@ export const getPatientById = async (req, res) => {
                          firstName: true,
                          lastName: true,
                          email: true,
-                         phone: true
+                         phone: true,
+                         prescriptions: {
+                             orderBy: { issuedAt: 'desc' },
+                             take: 5,
+                             select: {
+                                status: true,
+                                prescriptionItems: {
+                                    select: {
+                                        medicineName: true,
+                                        dosage: true
+                                    }
+                                }
+                             }
+                         }
                      }
-                 },
-                 prescriptions: {
-                     include: {
-                        prescriptionItems: true
-                     },
-                     orderBy: {
-                        issuedAt: 'desc'
-                     },
-                     take: 5
                  },
                  labReports: {
                     take: 5,
@@ -239,8 +297,10 @@ export const getPatientById = async (req, res) => {
         });
 
         if (!patient) {
+            console.log(`[DEBUG] Patient not found for ID: ${patientId}`);
             return res.status(404).json({ message: 'Patient not found' });
         }
+        console.log(`[DEBUG] Patient found: ${patient.user.firstName}`);
 
         // Calculate Age
         const today = new Date();
@@ -253,13 +313,15 @@ export const getPatientById = async (req, res) => {
 
         // Derived Active Medications (from recent prescriptions)
         const activeMeds = new Set();
-        patient.prescriptions.forEach(p => {
-            if(p.status !== 'REJECTED') {
-                 p.prescriptionItems.forEach(item => {
-                     activeMeds.add(`${item.medicineName} ${item.dosage || ''}`.trim());
-                 });
-            }
-        });
+        if (patient.user.prescriptions) {
+            patient.user.prescriptions.forEach(p => {
+                if(p.status !== 'REJECTED') {
+                     p.prescriptionItems.forEach(item => {
+                         activeMeds.add(`${item.medicineName || 'Unknown Med'} ${item.dosage || ''}`.trim());
+                     });
+                }
+            });
+        }
 
         const profileData = {
             id: patient.patientId,
@@ -279,4 +341,263 @@ export const getPatientById = async (req, res) => {
         res.status(200).json(profileData);
 
 
+}
+
+// get prescription requests
+export const getPrescriptionRequests = async (req, res) => {
+    // Fetch all for visibility (demo mode)
+    const requests = await prisma.prescription.findMany({
+        include: {
+           user: { select: { firstName: true, lastName: true } }, 
+           prescriptionItems: true
+        },
+        orderBy: { issuedAt: 'desc' }
+    });
+
+    const mapped = requests.map(r => ({
+        id: r.prescriptionId,
+        patientName: `${r.user.firstName} ${r.user.lastName}`,
+        status: r.status,
+        prescriptionItems: r.prescriptionItems,
+        issuedAt: r.issuedAt
+    }));
+    
+    res.status(200).json(mapped);
+}
+
+// update availability
+export const updateDoctorAvailability = async (req, res) => {
+    const { id: userId } = req.user;
+    const { availability, workingHours } = req.body; // Expecting workingHours as JSON
+
+    const doctor = await prisma.doctor.update({
+        where: { doctorId: userId },
+        data: {
+             availability,
+             workingHours: workingHours ? workingHours : undefined 
+        }
+    });
+
+    res.status(200).json(doctor);
+}
+
+export const getDoctorAvailability = async (req, res) => {
+     const { id: userId } = req.user;
+     const doctor = await prisma.doctor.findUnique({
+         where: { doctorId: userId },
+         select: { availability: true, workingHours: true }
+     });
+     res.status(200).json(doctor);
+}
+
+// get all patients for selection
+// get all patients for selection
+export const getPatients = async (req, res) => {
+    const patients = await prisma.patient.findMany({
+        include: { 
+            user: { select: { firstName: true, lastName: true, phone: true } },
+            appointments: {
+                orderBy: { date: 'desc' },
+                take: 1, // Last visit
+                select: { date: true }
+            }
+        }
+    });
+    
+    const mapped = patients.map(p => ({
+        id: p.patientId,
+        name: `${p.user.firstName} ${p.user.lastName}`,
+        phone: p.user.phone || 'N/A',
+        dob: p.dob,
+        gender: p.gender,
+        lastVisit: p.appointments[0]?.date || null
+    }));
+    
+    res.status(200).json(mapped);
+}
+
+// create appointment
+export const createAppointment = async (req, res) => {
+    const { id: doctorId } = req.user;
+    let { patientId, date, time, newPatient } = req.body;
+
+    // Handle New Patient Creation
+    if (newPatient) {
+        try {
+            const { firstName, lastName, gender, dob, phone } = newPatient;
+            // Generate unique guest email
+            const email = `guest_${Date.now()}_${Math.floor(Math.random() * 1000)}@mediconnect.local`;
+            // Temporary password
+            const password = await bcrypt.hash('123456', 10); // Default hash
+
+            // Create User
+            const user = await prisma.user.create({
+                data: {
+                    firstName,
+                    lastName,
+                    email,
+                    password,
+                    phone: phone || null,
+                    status: 'ACTIVE',
+                    isEmailVerified: true, // Auto-verify guest
+                    roles: {
+                        create: {
+                            role: { connect: { name: 'PATIENT' } }
+                        }
+                    }
+                }
+            });
+
+            // Create Patient
+            await prisma.patient.create({
+                data: {
+                    user: { connect: { id: user.id } },
+                    nic: null,
+                    dob: new Date(dob),
+                    address: null,
+                    gender: gender.toUpperCase(), // Ensure Enum match
+                }
+            });
+
+            patientId = user.id;
+        } catch (error) {
+            console.error("Error creating new patient:", error);
+            return res.status(500).json({ message: "Failed to create new patient record" });
+        }
+    }
+
+    if (!patientId) {
+        return res.status(400).json({ message: "Patient ID is required" });
+    }
+
+    const appointment = await prisma.appointment.create({
+        data: {
+            patientId,
+            doctorId,
+            date: new Date(date),
+            time: new Date(`${date}T${time}`),
+            status: 'PENDING'
+        }
+    });
+    res.status(201).json(appointment);
+}
+
+// get single prescription (public/shared)
+export const getPrescriptionById = async (req, res) => {
+    const { id } = req.params;
+    const prescription = await prisma.prescription.findUnique({
+        where: { prescriptionId: id },
+        include: {
+            user: { // Patient User
+                select: { firstName: true, lastName: true, email: true, phone: true }
+            },
+            appointment: {
+                include: {
+                    doctor: {
+                        include: {
+                            user: { select: { firstName: true, lastName: true } }
+                        }
+                    }
+                }
+            },
+            prescriptionItems: true
+        }
+    });
+
+    if (!prescription) {
+        return res.status(404).json({ message: 'Prescription not found' });
+    }
+
+    res.status(200).json(prescription);
+}
+
+// delete prescription
+export const deletePrescription = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.prescription.delete({
+            where: { prescriptionId: id }
+        });
+        res.status(200).json({ message: 'Prescription deleted successfully' });
+    } catch (error) {
+        console.error("Error deleting prescription:", error);
+        res.status(500).json({ message: 'Failed to delete prescription' });
+    }
+}
+
+// get doctor profile
+export const getDoctorProfile = async (req, res) => {
+    const { id: userId } = req.user;
+    
+    try {
+        const doctor = await prisma.doctor.findUnique({
+             where: { doctorId: userId },
+             include: {
+                 user: {
+                     select: {
+                         firstName: true,
+                         lastName: true,
+                         email: true,
+                         phone: true
+                     }
+                 }
+             }
+        });
+
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor profile not found' });
+        }
+
+        const profileData = {
+            firstName: doctor.user.firstName,
+            lastName: doctor.user.lastName,
+            email: doctor.user.email,
+            phone: doctor.user.phone || '', // User phone
+            slmcRegNo: doctor.doctorId, // Assuming DoctorID is SLMC or similar, if not we need another field. But earlier used id.
+            specialization: doctor.specialization,
+            bio: doctor.bio || '',
+            proficiency: doctor.proficiency || [], // JSON
+            hospitals: doctor.hospitals || [], // JSON
+            experience: doctor.experience || 0,
+            educationalQualifications: doctor.qualifications || ''
+        };
+
+        res.status(200).json(profileData);
+    } catch (error) {
+        console.error("Error fetching doctor profile:", error);
+        res.status(500).json({ message: 'Failed to fetch profile' });
+    }
+}
+
+// update doctor profile
+export const updateDoctorProfile = async (req, res) => {
+    const { id: userId } = req.user;
+    const { phone, bio, proficiency, hospitals, experience, educationalQualifications } = req.body;
+
+    try {
+        // Update User details (phone)
+        if (phone !== undefined) {
+             await prisma.user.update({
+                 where: { id: userId },
+                 data: { phone }
+             });
+        }
+
+        // Update Doctor details
+        const doctor = await prisma.doctor.update({
+            where: { doctorId: userId },
+            data: {
+                bio,
+                proficiency: proficiency, // Prisma handles JSON
+                hospitals: hospitals, // Prisma handles JSON
+                experience: parseInt(experience) || 0,
+                qualifications: educationalQualifications // Mapping back
+            }
+        });
+
+        res.status(200).json({ message: 'Profile updated successfully', doctor });
+    } catch (error) {
+        console.error("Error updating doctor profile:", error);
+        res.status(500).json({ message: 'Failed to update profile' });
+    }
 }

@@ -255,6 +255,20 @@ const addRole = async (req, res) => {
     }
   });
 
+  // Auto-create Doctor Profile if role is DOCTOR
+  if (isRoleAvailable.name.toUpperCase() === 'DOCTOR') {
+      const existingDoctor = await prisma.doctor.findUnique({ where: { doctorId: userId } });
+      if (!existingDoctor) {
+          await prisma.doctor.create({
+              data: {
+                  doctorId: userId,
+                  specialization: 'General Practitioner', // Default
+                  availability: true
+              }
+          });
+      }
+  }
+
   return res.status(200).json({
     message: 'Role added to user successfully'
   });
