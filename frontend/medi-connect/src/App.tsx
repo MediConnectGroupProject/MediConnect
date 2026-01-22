@@ -15,12 +15,18 @@ import { PortalRoutes } from './routes/PortalRoutes'
 import { Toaster } from 'react-hot-toast'
 import ProfilePage from './pages/common/ProfilePage'
 
+import PrescriptionSlip from './pages/public/PrescriptionSlip';
+
 const router = createBrowserRouter([
   {
     path: '/',
     element: (
         <LandingPage />
     )
+  },
+  {
+    path: '/prescription/:id',
+    element: <PrescriptionSlip />
   },
   {
     path: '/register', // Explicit path for registration

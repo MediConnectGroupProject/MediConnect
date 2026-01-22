@@ -43,26 +43,10 @@ interface UserProfileProps {
   isMe?: boolean; // NEW: If true, uses userApi for fetch/update "me"
 }
 
-export function UserProfile({ userId, initialData, readOnly = false, onEdit, role, isMe = false }: UserProfileProps) {
-    // Mock data if no initialData provided
-    const defaultData: UserProfileData = {
-        id: userId || 'u_dummy',
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        phone: '+1 (555) 123-4567',
-        role: (role as any) || 'patient',
-        age: 34,
-        gender: 'Male',
-        bloodType: 'O+',
-        allergies: [],
-        medications: [],
-        conditions: [],
-        specialization: 'General Practice',
-        licenseNumber: 'DOC-12345',
-        department: 'Cardiology'
-    };
-
-    const [data, setData] = useState<UserProfileData>(initialData || defaultData);
+export function UserProfile({ userId, initialData, readOnly = false, onEdit, isMe = false }: UserProfileProps) {
+    
+    // Initialize with null if fetching is needed
+    const [data, setData] = useState<UserProfileData | null>(initialData || null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -80,13 +64,9 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                          const api = await import('../api/userApi');
                          fetchedData = await api.getProfile();
                      } else if (userId) {
-                         // Viewing another user (e.g. Doctor viewing Patient)
-                         // Currently assumes Doctor viewing Patient via doctorApi
-                         // TODO: Make this more robust for Admin viewing others
-                         try {
-                            const api = await import('../api/doctorApi');
-                            fetchedData = await api.getPatient(userId);
-                         } catch (e) { console.warn("DoctorAPI fetch failed", e); }
+                         const api = await import('../api/doctorApi');
+                         // This will throw if !res.ok
+                         fetchedData = await api.getPatient(userId);
                      }
                      
                      if (fetchedData) {
@@ -100,7 +80,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                      }
                  } catch (e) {
                      console.error("Failed to fetch user profile", e);
-                     setError("Failed to load profile.");
+                     setError(e instanceof Error ? e.message : "Failed to load profile.");
                  } finally {
                      setLoading(false);
                  }
@@ -110,7 +90,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
     }, [userId, isMe, initialData]);
 
     const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState<UserProfileData>(data);
+    const [editForm, setEditForm] = useState<UserProfileData | null>(initialData || null);
     
     // Update local state if prop changes
     useEffect(() => {
@@ -122,16 +102,18 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
 
     // Update edit form when data changes (e.g. after fetch)
     useEffect(() => {
-        setEditForm(data);
+        if (data) setEditForm(data);
     }, [data]);
 
     const handleSave = async () => {
         if (isMe) {
              try {
                  const api = await import('../api/userApi');
-                 await api.updateProfile(editForm);
-                 setData(editForm);
-                 setIsEditing(false);
+                 if (editForm) {
+                    await api.updateProfile(editForm);
+                    setData(editForm);
+                    setIsEditing(false);
+                 }
                  // Optional: Toast success
              } catch (e) {
                  console.error("Failed to update profile", e);
@@ -139,18 +121,24 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
              }
         } else {
             // Local save (parent handles persistence via onEdit if provided)
-            setData(editForm);
-            setIsEditing(false);
-            if (onEdit) onEdit(editForm);
+            if (editForm) {
+                setData(editForm);
+                setIsEditing(false);
+                if (onEdit) onEdit(editForm);
+            }
         }
     };
 
     const handleCancel = () => {
-        setEditForm(data);
+        setEditForm(data!);
         setIsEditing(false);
     };
 
-    if (isEditing && (!readOnly || isMe)) {
+    if (loading) return <div className="p-8 text-center">Loading profile...</div>;
+    if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
+    if (!data) return <div className="p-8 text-center">No profile data found.</div>;
+
+    if (isEditing && (!readOnly || isMe) && editForm) {
         return (
             <Card>
                 <CardHeader>

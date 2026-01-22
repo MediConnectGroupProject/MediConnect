@@ -6,15 +6,9 @@ import { Input } from '../../components/ui/input';
 
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Calendar, CreditCard, CheckCircle, XCircle, Users, FileText, Home, LogOut, Clock, Search, DollarSign, Receipt, User } from 'lucide-react';
-
-import { useNavigate } from 'react-router-dom';
-import { RouteNames } from '../../utils/RouteNames';
-import { useAuth } from '../../utils/authContext';
+import { Calendar, CreditCard, CheckCircle, XCircle, Users, FileText, Clock, Search, DollarSign, Receipt } from 'lucide-react';
 
 export function ReceptionistPortal() {
-    const navigate = useNavigate();
-    const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState('appointments');
     const [searchTerm, setSearchTerm] = useState('');

@@ -1,10 +1,10 @@
-import React, { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Shield, Search, Plus, Home, LogOut } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { addRoleMutation, allRoles, allUsers, updateRoleMutation, updateUserStateMutation } from '../../hooks/adminUsersHook';
 import { PaginationLay } from '../layouts/PaginationLay';
 import toast from 'react-hot-toast';
@@ -89,7 +89,7 @@ export function AdminPortal() {
     _updateRoleMutation.mutate({
       userId: selectedUser.id,
       roleId: roleId,
-      action: action,
+      action: action as "ACTIVE" | "INACTIVE" | "SUSPENDED",
     })
   }
 

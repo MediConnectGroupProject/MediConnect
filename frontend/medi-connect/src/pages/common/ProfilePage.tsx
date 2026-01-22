@@ -3,10 +3,9 @@ import { useAuth } from "../../utils/authContext";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useNavigate } from "react-router-dom";
+import DoctorProfile from "../doctor/DoctorProfile";
 
 export default function ProfilePage() {
-    // Auth context usually provides user wrapper.
-    // We can rely on UserProfile isMe={true} to fetch refined data.
     const { user } = useAuth(); 
     const navigate = useNavigate();
 
@@ -14,6 +13,14 @@ export default function ProfilePage() {
         return <div className="p-8 text-center">Please log in to view profile.</div>;
     }
 
+    // Role specific profiles
+    const role = user.primaryRole?.toLowerCase() || (user.roles?.[0]?.toLowerCase());
+    
+    if (role === 'doctor') {
+        return <DoctorProfile />;
+    }
+
+    // Default Generic Profile (Patient/Admin/Other)
     return (
         <div className="container mx-auto p-6 max-w-4xl">
             <div className="mb-6 flex items-center gap-4">
@@ -25,7 +32,7 @@ export default function ProfilePage() {
 
             <UserProfile 
                 isMe={true} 
-                role={(user.roles && user.roles.length > 0 ? user.roles[0].toLowerCase() : 'patient') as any} 
+                role={role as any} 
             />
         </div>
     );

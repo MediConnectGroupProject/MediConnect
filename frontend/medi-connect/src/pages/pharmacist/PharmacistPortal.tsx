@@ -4,15 +4,10 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { QrCode, AlertTriangle, Scan, Home, LogOut, Search, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../utils/authContext';
+import { Search, Scan, QrCode, AlertTriangle } from 'lucide-react';
 import { getPrescriptionQueue, getInventory } from '../../api/pharmacistApi';
 
 export function PharmacistPortal() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-
   const [activeTab, setActiveTab] = useState('prescriptions');
   const [prescriptionQueue, setPrescriptionQueue] = useState<any[]>([]);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
@@ -24,8 +19,8 @@ export function PharmacistPortal() {
             const queue = await getPrescriptionQueue();
             setPrescriptionQueue(queue);
 
-            const inv = await getInventory();
-            setInventoryItems(inv);
+            const inv = await getInventory(1, 100, '');
+            setInventoryItems(inv.data || []); // Handle paginated response structure
         } catch (error) {
             console.error("Failed to fetch pharmacist data", error);
         }
@@ -105,7 +100,7 @@ export function PharmacistPortal() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {prescriptionRequests.map((prescription) => (
+                  {prescriptionRequests.map((prescription: any) => (
                     <div key={prescription.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
                         <div className="flex flex-col items-center">
@@ -210,7 +205,7 @@ export function PharmacistPortal() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {lowStockAlerts.map((alert) => (
+                  {lowStockAlerts.map((alert: any) => (
                     <div key={alert.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
                         <AlertTriangle className={`h-6 w-6 ${
@@ -260,7 +255,7 @@ export function PharmacistPortal() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {readyForPickup.map((pickup) => (
+                  {readyForPickup.map((pickup: any) => (
                     <div key={pickup.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">

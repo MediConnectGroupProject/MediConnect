@@ -1,68 +1,30 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { useNavigate } from 'react-router-dom';
-import { getUpNextAppointment, updateAppointmentStatus } from '../../api/doctorApi';
+import { updateAppointmentStatus } from '../../api/doctorApi';
 import type { Appointment } from '../../types';
 import { Badge } from '../../components/ui/badge';
 import { Clock, PlayCircle, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ActiveConsultationCard } from './ActiveConsultationCard';
 
-export function UpNextCard() {
-  const navigate = useNavigate();
-  const [activeAppt, setActiveAppt] = useState<Appointment | null>(null);
-  const [nextAppt, setNextAppt] = useState<Appointment | null>(null);
+interface UpNextCardProps {
+    activeAppointment: Appointment | null;
+    nextAppointment: Appointment | null;
+    onRefresh: () => void;
+}
 
-  const fetchAppointments = async () => {
-    try {
-        const data = await getUpNextAppointment();
-        if (data) {
-            const mapped: Appointment = {
-                id: data.appointmentId,
-                patientName: `${data.patient.user.firstName} ${data.patient.user.lastName}`,
-                patientId: data.patientId,
-                date: data.date,
-                time: new Date(data.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: data.status,
-                reason: "Regular Consultation",
-                doctorId: data.doctorId,
-                doctorName: ""
-            };
-
-            if (mapped.status === 'IN_PROGRESS') {
-                setActiveAppt(mapped);
-                setNextAppt(null); 
-            } else {
-                setActiveAppt(null);
-                setNextAppt(mapped);
-            }
-        } else {
-            setActiveAppt(null);
-            setNextAppt(null);
-        }
-    } catch (e) {
-        console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    fetchAppointments();
-    const interval = setInterval(fetchAppointments, 5000); 
-    return () => clearInterval(interval);
-  }, []);
+export function UpNextCard({ activeAppointment, nextAppointment, onRefresh }: UpNextCardProps) {
 
   // Use the new component for Active state
-  if (activeAppt) {
+  if (activeAppointment) {
       return (
           <ActiveConsultationCard 
-            appointment={activeAppt} 
-            onConsultationComplete={fetchAppointments} 
+            appointment={activeAppointment} 
+            onConsultationComplete={onRefresh} 
           />
       );
   }
 
-  if (!nextAppt) return null;
+  if (!nextAppointment) return null;
 
   return (
     <Card className="mb-6 border-l-4 border-l-green-600 bg-white shadow-sm">
@@ -80,11 +42,11 @@ export function UpNextCard() {
                     <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">UP NEXT</Badge>
                     <span className="flex items-center text-sm text-gray-600">
                         <Clock className="h-3 w-3 mr-1" />
-                        {nextAppt.time}
+                        {nextAppointment.time}
                     </span>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">{nextAppt.patientName}</h3>
-                <p className="text-gray-600">{nextAppt.reason || 'Regular Consultation'}</p>
+                <h3 className="text-xl font-bold text-gray-900">{nextAppointment.patientName}</h3>
+                <p className="text-gray-600">{nextAppointment.reason || 'Regular Consultation'}</p>
             </div>
         </div>
 
@@ -93,9 +55,12 @@ export function UpNextCard() {
             className="bg-green-600 hover:bg-green-700 shadow-sm"
             onClick={async () => {
                 try {
-                     await updateAppointmentStatus(nextAppt.id, 'IN_PROGRESS');
+                     await updateAppointmentStatus(nextAppointment.id, 'IN_PROGRESS');
+                     // Set start time for timer
+                     localStorage.setItem(`consultation_start_${nextAppointment.id}`, Date.now().toString());
+                     
                      toast.success('Consultation Started');
-                     fetchAppointments();
+                     onRefresh();
                 } catch(e) { toast.error('Failed to start'); }
             }}
         >
@@ -108,3 +73,4 @@ export function UpNextCard() {
     </Card>
   );
 }
+

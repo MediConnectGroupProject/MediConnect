@@ -5,7 +5,6 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { registerUser } from '../api/authApi';
-import { useAuth } from '../utils/authContext';
 import { ArrowLeft } from 'lucide-react';
 
 export default function Register() {

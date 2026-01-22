@@ -21,22 +21,29 @@ export interface Appointment {
 }
 
 export interface PrescriptionItem {
-  medicationId: string;
-  name: string;
+  id?: string;
+  itemId?: string; // Schema
+  medicationId?: string;
+  medicineId?: string;
+  name?: string; // legacy support
+  medicineName?: string; // actual schema
   dosage: string;
-  frequency: string;
-  duration: string;
+  frequency?: string;
+  timing?: string;
+  duration?: string;
+  instructions?: string;
 }
 
 export interface Prescription {
   id: string;
+  prescriptionId: string; // Backend uses prescriptionId usually, or id? Schema says prescriptionId.
   appointmentId: string;
   patientId: string;
   doctorId: string;
   doctorName: string;
   date: string;
-  items: PrescriptionItem[];
-  status: 'ISSUED' | 'DISPENSED';
+  prescriptionItems: PrescriptionItem[]; // Changed from items
+  status: 'ISSUED' | 'DISPENSED' | 'PENDING';
   qrCodeData: string; // The content encoded in the QR
   notes?: string;
 }

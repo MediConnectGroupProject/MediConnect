@@ -11,5 +11,6 @@ export const RouteNames = {
     ADMIN_PORTAL: '/portal/admin',
     MLT_PORTAL: '/portal/mlt',
     RECEPTIONIST_PORTAL: '/portal/receptionist',
+    PROFILE: '/profile',
 
 } as const;

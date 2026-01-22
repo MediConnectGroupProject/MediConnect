@@ -16,11 +16,27 @@ export function ActiveConsultationCard({ appointment, onConsultationComplete }: 
     const [timer, setTimer] = useState(0);
 
     useEffect(() => {
+        // Initialize timer from storage or 0
+        const startKey = `consultation_start_${appointment.id}`;
+        const storedStart = localStorage.getItem(startKey);
+        
+        let startTime = Date.now();
+        if (storedStart) {
+            startTime = parseInt(storedStart);
+        } else {
+            // If IN_PROGRESS but no local storage (e.g. cross device), just start counting from now?
+            // Or better, set it now so at least from now on it persists.
+            localStorage.setItem(startKey, startTime.toString());
+        }
+
         const interval = setInterval(() => {
-            setTimer(t => t + 1);
+            const now = Date.now();
+            const diffInSeconds = Math.floor((now - startTime) / 1000);
+            setTimer(diffInSeconds > 0 ? diffInSeconds : 0);
         }, 1000);
+
         return () => clearInterval(interval);
-    }, []);
+    }, [appointment.id]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
