@@ -5,13 +5,25 @@ import {
     getAllRoles,
     changeRoleStatus,
     addRole,
-    changeUserStatus
+    changeUserStatus,
+    getAdminDashboardStats
 } from "../api/adminUsersApi";
 import {
     useMutation,
     useQuery,
     useQueryClient
 } from "@tanstack/react-query";
+
+// get dashboard stats
+export const useAdminStats = () => {
+    return useQuery({
+        queryKey: ['adminStats'],
+        queryFn: getAdminDashboardStats,
+        staleTime: 1000 * 60 * 5, // 5 mins
+        retry: 1,
+        refetchOnWindowFocus: false,
+    });
+}
 
 // get user count
 export const userCount = () => {
@@ -26,11 +38,11 @@ export const userCount = () => {
 }
 
 // get all users
-export const allUsers = (page: number, limit: number, search: string) => {
+export const allUsers = (page: number, limit: number, search: string, type?: 'internal' | 'external') => {
 
     return useQuery({
-        queryKey: ['users', page, limit, search],
-        queryFn: () => getAllUsers(page, limit, search),
+        queryKey: ['users', page, limit, search, type],
+        queryFn: () => getAllUsers(page, limit, search, type),
         staleTime: 1000 * 60 * 5,
         retry: 1,
         refetchOnWindowFocus: false,

@@ -23,7 +23,7 @@ export const getUserCount = async () => {
 }
 
 // get all users
-export const getAllUsers = async (page: number, limit: number, search: string) => {
+export const getAllUsers = async (page: number, limit: number, search: string, type?: 'internal' | 'external') => {
 
     const urlParams = new URLSearchParams({
 
@@ -33,6 +33,10 @@ export const getAllUsers = async (page: number, limit: number, search: string) =
 
     if (search) {
         urlParams.append('search', encodeURIComponent(search));
+    }
+    
+    if (type) {
+        urlParams.append('type', type);
     }
 
     const res = await fetch(
@@ -150,5 +154,44 @@ export const changeUserStatus = async (userId: string, status: string) => {
         throw new Error(data.message || "Something went wrong!");
     }
 
+
     return data;
+}
+
+// get dashboard stats
+export const getAdminDashboardStats = async () => {
+    const res = await fetch(`${API_URL}/stats`, {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch dashboard stats');
+    return res.json();
+}
+
+// get system health
+export const getSystemHealth = async () => {
+    const res = await fetch(`${API_URL}/health`, {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch system health');
+    return res.json();
+}
+
+// get system report
+export const getSystemReport = async (type: 'users' | 'logs') => {
+    const res = await fetch(`${API_URL}/reports?type=${type}`, {
+        method: 'GET',
+        headers: { 
+            // Don't set Content-Type for download unless needed, but we expect blob/text
+        },
+        credentials: 'include'
+    });
+    
+    if (!res.ok) throw new Error('Failed to download report');
+
+    // Return blob for file download
+    if (type === 'users') return res.blob();
+    // Return json for logs
+    return res.json();
 }

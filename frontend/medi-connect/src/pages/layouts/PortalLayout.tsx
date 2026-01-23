@@ -32,10 +32,12 @@ export function PortalLayout() {
                     <div className="flex items-center gap-4">
                         <span className="text-sm text-gray-600">{user?.name}</span>
                         <Badge variant={
-                            primaryRole === 'admin' ? 'destructive' :
+                            primaryRole === 'admin' ? 'outline' :
                                 primaryRole === 'doctor' ? 'default' :
                                     primaryRole === 'pharmacist' ? 'secondary' : 'outline'
-                        }>{primaryRole}</Badge>
+                        }
+                        className={primaryRole === 'admin' ? 'bg-black text-white hover:bg-gray-800 border-black' : ''}
+                        >{primaryRole}</Badge>
                          <Button variant="ghost" size="sm" onClick={() => navigate(`${RouteNames.PORTAL}/profile`)}>
                             <User className="h-4 w-4" />
                         </Button>

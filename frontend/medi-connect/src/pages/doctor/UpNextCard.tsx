@@ -1,4 +1,5 @@
 import { Button } from '../../components/ui/button';
+import { Card, CardContent } from '../../components/ui/card';
 import { updateAppointmentStatus } from '../../api/doctorApi';
 import type { Appointment } from '../../types';
 import { Badge } from '../../components/ui/badge';

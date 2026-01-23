@@ -36,8 +36,11 @@ export function AdminPortal() {
   const [activeTab, setActiveTab] = useState('users');
 
   // users related states
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [pageExternal, setPageExternal] = useState(1);
+  const [limitExternal, setLimitExternal] = useState(10);
+  const [pageInternal, setPageInternal] = useState(1);
+  const [limitInternal] = useState(1000); // Show all internal users by default
+
   const [searchText, setSearchText] = useState('');
   const debouncedSearch = useDebounce(searchText, 500);
   const [isOpen, setIsOpen] = useState(false); // dialog state
@@ -57,9 +60,10 @@ export function AdminPortal() {
   ];
 
   // 
+  // 
   useEffect(() => {
-
-    setPage(1);
+    setPageExternal(1);
+    setPageInternal(1);
   }, [debouncedSearch]);
 
   // handle roles status
@@ -115,16 +119,18 @@ export function AdminPortal() {
 
 
   // data fetching
-  const { data: users, isLoading, isError, error } = allUsers(page, limit, debouncedSearch);
+  const { data: internalUsers, isLoading: isInternalLoading, isError: isInternalError, error: internalError } = allUsers(pageInternal, limitInternal, debouncedSearch, 'internal');
+  const { data: externalUsers, isLoading: isExternalLoading, isError: isExternalError, error: externalError } = allUsers(pageExternal, limitExternal, debouncedSearch, 'external');
+  
   const { data: roles, isLoading: isRolesLoading, error: errorRoles, isError: isErrorRoles } = allRoles();
   const roleOptions = roles?.data?.map((r: { name: string }) => ({
     value: r.name,
   })) ?? [];
 
   // error toast
-  if (isError || isErrorRoles) {
+  if (isInternalError || isExternalError || isErrorRoles) {
 
-    const msg = isError ? error?.message : errorRoles?.message || "Something went wrong";
+    const msg = isInternalError ? internalError?.message : (isExternalError ? externalError?.message : errorRoles?.message || "Something went wrong");
     toast.error(msg);
   }
 
@@ -158,40 +164,39 @@ export function AdminPortal() {
                     { value: "50" },
                     { value: "100" },
                   ]}
-                  value='10'
-                  onChange={(x) => setLimit(Number(x))}
+                  value={String(limitExternal)}
+                  onChange={(x) => setLimitExternal(Number(x))}
                 />
-
-                {/* <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add User
-                </Button> */}
               </div>
             </div>
 
+            {/* Internal Users Section */}
             <Card>
               <CardHeader>
-                <CardTitle>System Users</CardTitle>
-                <CardDescription>Manage doctors, patients, pharmacists, and administrators</CardDescription>
+                <CardTitle>Internal Users</CardTitle>
+                <CardDescription>Doctors, Pharmacists, MLTs, Receptionists, and Admins</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {isLoading &&
+                  {isInternalLoading &&
                     <Button variant="outline" className='hover:bg-white!' size="sm">
                       <Spinner />
                       Please wait
                     </Button>}
 
-                  {!isLoading && users?.data.map((user: ComponentUser) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {!isInternalLoading && internalUsers?.data.map((user: ComponentUser) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-medium">{user.firstName + ' ' + user.lastName}</h3>
-                          <Badge variant='outline'>
-                            {user.roles?.map((r, index) => (
-                              <span key={index}>{r.role.name}</span>
-                            ))}
-                          </Badge>
+                          {user.roles?.map((r, index) => (
+                             <Badge key={index} 
+                                variant='outline'
+                                className={r.role.name === 'ADMIN' ? 'bg-black text-white border-black hover:bg-gray-800' : ''}
+                             >
+                               {r.role.name}
+                             </Badge>
+                          ))}
                           <Badge variant={user.status === 'ACTIVE' ? 'secondary' : 'destructive'}>
                             {user.status}
                           </Badge>
@@ -204,120 +209,156 @@ export function AdminPortal() {
                       <div className="flex gap-2">
                         <Button className='cursor-pointer' variant="outline" size="sm" onClick={() => { setSelectedUser(user); setIsOpenUserStatusDialog(true) }}>Edit User Status</Button>
                         <Button className='cursor-pointer' variant="outline" size="sm" onClick={() => { setSelectedUser(user); setIsOpen(true) }}>Edit Permissions</Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {!isInternalLoading && (!internalUsers?.data || internalUsers.data.length === 0) && (
+                      <div className="text-center py-4 text-gray-500 text-sm">No internal users found.</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-                        {/* permission dialog */}
-                        <Dialog open={isOpen} onOpenChange={() => { setSelectedUser(user); setIsOpen(false) }}>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Add /Remove User Roles</DialogTitle>
-                            </DialogHeader>
+            {/* External Users Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>External Users (Patients)</CardTitle>
+                <CardDescription>Registered patients</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {isExternalLoading &&
+                     <div className="py-4 text-center"><Spinner /></div>
+                  }
 
-                            <div className="my-4 flex flex-col gap-4">
-
-                              <div className='flex flex-col gap-3'>
-                                <span className='mb-3 font-bold'>Select Roles To {selectedUser?.firstName + ' ' + selectedUser?.lastName}</span>
-
-                                <div className='flex items-center'>
-                                  {!isRolesLoading && <CustomDropdownMenu
-                                    title="Select Role"
-                                    data={roleOptions}
-                                    value={selectedRole}
-                                    onChange={(v) => setSelectedRole(v)}
-                                  />}
-                                  {isRolesLoading && <Spinner />}
-                                  <Button disabled={_addRoleMutation.isPending} className='ml-auto cursor-pointer mb-3' onClick={handleSubmitAddRole}>{_addRoleMutation.isPending ? 'Adding ...' : 'Add Role'}</Button>
-                                </div>
-
-                                <span className='mx-auto'>{selectedRole} Role Selected.</span>
-                              </div>
-
-                              <Separator />
-
-                              <div className='flex flex-col'>
-
-                                <span className='mb-3 font-bold'>Current Roles Assigned To {selectedUser?.firstName + ' ' + selectedUser?.lastName}</span>
-
-                                {selectedUser?.roles.map((val, index) => {
-
-                                  const roleId = val.role.id
-                                  return (
-
-                                    <div className='flex flex-col gap-3 my-3' key={index}>
-                                      <div className='flex items-center gap-3'>
-
-                                        <span className='mr-auto'>{val.role.name}</span>
-                                        <CustomDropdownMenu
-                                          title="Select Action"
-                                          data={roleActionOptions}
-                                          value={val.status}
-                                          onChange={(action) => handleRoleActionChange(roleId, action)}
-                                        />
-                                        <Button variant={'default'} disabled={!roleActions[roleId] || _updateRoleMutation.isPending} className='ml-auto cursor-pointer' onClick={() => handleSubmitRoleChange(roleId)}>{_updateRoleMutation.isPending ? 'Updating...' : 'Change Status'}</Button>
-
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-
-                              </div>
-                            </div>
-
-                            <DialogFooter>
-                              <Button className='cursor-pointer' variant="outline" onClick={() => { setSelectedUser(user); setIsOpen(false) }}>
-                                Cancel
-                              </Button>
-                              {/* <Button className='cursor-pointer' onClick={() => alert("Action performed!")}>Confirm</Button> */}
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-
-                        {/* user status dialog */}
-                        <Dialog open={isOpenUserStatusDialog} onOpenChange={() => { setSelectedUser(user); setSelectedUserState(''); setIsOpenUserStatusDialog(false) }}>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Change User States</DialogTitle>
-                            </DialogHeader>
-
-                            <div className="my-4 flex flex-col gap-4">
-
-                              <div className='flex flex-col gap-3'>
-                                <span className='mb-3 font-bold'>User : {selectedUser?.firstName + ' ' + selectedUser?.lastName}</span>
-
-                                <div className='flex items-center'>
-                                  <CustomDropdownMenu
-                                    title="Select Action"
-                                    data={roleActionOptions}
-                                    value={selectedUser?.status}
-                                    onChange={(v) => setSelectedUserState(v)}
-                                  />
-
-                                  <Button disabled={_updateUserStateMutation.isPending || selectedUserState === ''} className='ml-auto cursor-pointer mb-3' onClick={handleSubmitUserStatus}>{_updateUserStateMutation.isPending ? 'Updating ...' : 'Update'}</Button>
-                                </div>
-
-                                <span className='mx-auto'>Role will be {selectedUserState}.</span>
-                              </div>
-                            </div>
-
-                            <DialogFooter>
-                              <Button className='cursor-pointer' variant="outline" onClick={() => { setSelectedUser(user); setSelectedUserState(''); setIsOpenUserStatusDialog(false) }}>
-                                Cancel
-                              </Button>
-                              {/* <Button className='cursor-pointer' onClick={() => alert("Action performed!")}>Confirm</Button> */}
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
+                  {!isExternalLoading && externalUsers?.data.map((user: ComponentUser) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium">{user.firstName + ' ' + user.lastName}</h3>
+                           {user.roles?.map((r, index) => (
+                             <Badge key={index} variant='outline'>
+                               {r.role.name}
+                             </Badge>
+                          ))}
+                          <Badge variant={user.status === 'ACTIVE' ? 'secondary' : 'destructive'}>
+                            {user.status}
+                          </Badge>
+                          {!user.isEmailVerified && (
+                             <Badge variant={'destructive'}>Unverified</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">{user.email}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button className='cursor-pointer' variant="outline" size="sm" onClick={() => { setSelectedUser(user); setIsOpenUserStatusDialog(true) }}>Edit User Status</Button>
+                        <Button className='cursor-pointer' variant="outline" size="sm" onClick={() => { setSelectedUser(user); setIsOpen(true) }}>Edit Permissions</Button>
                       </div>
                     </div>
                   ))}
 
-                  {!isLoading && <PaginationLay
-                    page={page}
-                    totalPages={users?.meta.totalPages}
-                    onPageChange={setPage}
+                  {!isExternalLoading && (!externalUsers?.data || externalUsers.data.length === 0) && (
+                      <div className="text-center py-4 text-gray-500 text-sm">No patients found.</div>
+                  )}
+
+                  {!isExternalLoading && <PaginationLay
+                    page={pageExternal}
+                    totalPages={externalUsers?.meta.totalPages}
+                    onPageChange={setPageExternal}
                   />}
                 </div>
               </CardContent>
             </Card>
+
+            {/* Permission Dialog */}
+            <Dialog open={isOpen} onOpenChange={() => { setSelectedUser(null); setIsOpen(false) }}>
+                <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add /Remove User Roles</DialogTitle>
+                </DialogHeader>
+
+                <div className="my-4 flex flex-col gap-4">
+                    <div className='flex flex-col gap-3'>
+                    <span className='mb-3 font-bold'>Select Roles To {selectedUser?.firstName + ' ' + selectedUser?.lastName}</span>
+
+                    <div className='flex items-center'>
+                        {!isRolesLoading && <CustomDropdownMenu
+                        title="Select Role"
+                        data={roleOptions}
+                        value={selectedRole}
+                        onChange={(v) => setSelectedRole(v)}
+                        />}
+                        {isRolesLoading && <Spinner />}
+                        <Button disabled={_addRoleMutation.isPending} className='ml-auto cursor-pointer mb-3' onClick={handleSubmitAddRole}>{_addRoleMutation.isPending ? 'Adding ...' : 'Add Role'}</Button>
+                    </div>
+
+                    <span className='mx-auto'>{selectedRole} Role Selected.</span>
+                    </div>
+
+                    <Separator />
+
+                    <div className='flex flex-col'>
+                    <span className='mb-3 font-bold'>Current Roles Assigned To {selectedUser?.firstName + ' ' + selectedUser?.lastName}</span>
+                    {selectedUser?.roles.map((val, index) => {
+                        const roleId = val.role.id;
+                        return (
+                        <div className='flex flex-col gap-3 my-3' key={index}>
+                            <div className='flex items-center gap-3'>
+                            <span className='mr-auto'>{val.role.name}</span>
+                            <CustomDropdownMenu
+                                title="Select Action"
+                                data={roleActionOptions}
+                                value={val.status}
+                                onChange={(action) => handleRoleActionChange(roleId, action)}
+                            />
+                            <Button variant={'default'} disabled={!roleActions[roleId] || _updateRoleMutation.isPending} className='ml-auto cursor-pointer' onClick={() => handleSubmitRoleChange(roleId)}>{_updateRoleMutation.isPending ? 'Updating...' : 'Change Status'}</Button>
+                            </div>
+                        </div>
+                        )
+                    })}
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button className='cursor-pointer' variant="outline" onClick={() => { setSelectedUser(null); setIsOpen(false) }}>
+                    Cancel
+                    </Button>
+                </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* User Status Dialog */}
+            <Dialog open={isOpenUserStatusDialog} onOpenChange={() => { setSelectedUser(null); setSelectedUserState(''); setIsOpenUserStatusDialog(false) }}>
+                <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Change User States</DialogTitle>
+                </DialogHeader>
+
+                <div className="my-4 flex flex-col gap-4">
+                    <div className='flex flex-col gap-3'>
+                    <span className='mb-3 font-bold'>User : {selectedUser?.firstName + ' ' + selectedUser?.lastName}</span>
+
+                    <div className='flex items-center'>
+                        <CustomDropdownMenu
+                        title="Select Action"
+                        data={roleActionOptions}
+                        value={selectedUser?.status}
+                        onChange={(v) => setSelectedUserState(v)}
+                        />
+                        <Button disabled={_updateUserStateMutation.isPending || selectedUserState === ''} className='ml-auto cursor-pointer mb-3' onClick={handleSubmitUserStatus}>{_updateUserStateMutation.isPending ? 'Updating ...' : 'Update'}</Button>
+                    </div>
+                    <span className='mx-auto'>Role will be {selectedUserState}.</span>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button className='cursor-pointer' variant="outline" onClick={() => { setSelectedUser(null); setSelectedUserState(''); setIsOpenUserStatusDialog(false) }}>
+                    Cancel
+                    </Button>
+                </DialogFooter>
+                </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Approvals Tab */}

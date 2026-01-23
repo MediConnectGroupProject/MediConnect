@@ -10,13 +10,9 @@ export const getDoctorStats = async (req, res) => {
         const today = new Date();
         const startOfDay = new Date(today);
         startOfDay.setHours(0, 0, 0, 0);
-        // Backup 24 hours to cover timezone slips
-        startOfDay.setDate(startOfDay.getDate() - 1);
         
         const endOfDay = new Date(today);
         endOfDay.setHours(23, 59, 59, 999);
-        // Forward 24 hours
-        endOfDay.setDate(endOfDay.getDate() + 1);
 
         // pending appointments
         const pendingAppointments = await prisma.appointment.count({
@@ -83,11 +79,8 @@ export const getAppointments = async (req, res) => {
             //  console.log('Skipping date filter for debug');
             const queryDate = new Date(date);
             const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
-            //  Backup and Forward 24h to be safe
-             startOfDay.setDate(startOfDay.getDate() - 1);
 
             const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
-             endOfDay.setDate(endOfDay.getDate() + 1);
             
             whereClause.date = {
                 gte: startOfDay,
@@ -136,13 +129,10 @@ export const getUpNextAppointment = async (req, res) => {
         const { id: userId } = req.user;
         const now = new Date();
         const startOfDay = new Date(now);
-        startOfDay.setHours(0, 0, 0, 0);
-        // Match getAppointments logic: widen range to handle potential timezone/UTC offsets
-        startOfDay.setDate(startOfDay.getDate() - 1); 
+        startOfDay.setHours(0, 0, 0, 0); 
 
         const endOfDay = new Date(now);
         endOfDay.setHours(23, 59, 59, 999);
-        endOfDay.setDate(endOfDay.getDate() + 1);
 
         // 1. Check for Active Appointment (IN_PROGRESS)
         const activeAppointment = await prisma.appointment.findFirst({

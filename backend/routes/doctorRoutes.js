@@ -32,7 +32,7 @@ router.patch('/appointments/:appointmentId/status',protect, requireRole('doctor'
 router.get('/prescriptions/requests', protect, requireRole('doctor'), asyncHandler(getPrescriptionRequests));
 router.post('/prescriptions',protect, requireRole('doctor'), asyncHandler(createPrescription));
 router.delete('/prescriptions/:id', protect, requireRole('doctor'), asyncHandler(deletePrescription));
-router.get('/patients/:patientId',protect, requireRole('doctor'), asyncHandler(getPatientById));
+router.get('/patients/:patientId',protect, requireRole(['doctor', 'admin']), asyncHandler(getPatientById));
 
 router.get('/availability', protect, requireRole('doctor'), asyncHandler(getDoctorAvailability));
 router.put('/availability', protect, requireRole('doctor'), asyncHandler(updateDoctorAvailability));

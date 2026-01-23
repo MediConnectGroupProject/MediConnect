@@ -165,6 +165,7 @@ const login = async (req, res) => {
             id: user.id,
             email: user.email,
             roles: roleNames,
+            name: `${user.firstName} ${user.lastName}`,
             firstName: user.firstName,
             lastName: user.lastName,
             primaryRole: primaryRole

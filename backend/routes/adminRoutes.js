@@ -17,10 +17,17 @@ import {
     getRoles,
     changeRoleStatus,
     changeUserStatus,
-    addRole
+    addRole,
+    getDashboardStats,
+    getSystemHealth,
+    getSystemReport
 } from '../controllers/adminController.js';
 
 // user related routes
+router.get('/stats', protect, requireRole(['ADMIN']), asyncHandler(getDashboardStats));
+router.get('/health', protect, requireRole(['ADMIN']), asyncHandler(getSystemHealth));
+router.get('/reports', protect, requireRole(['ADMIN']), asyncHandler(getSystemReport));
+
 router.get('/users/count', protect, requireRole(['ADMIN']), asyncHandler(getUserCount));
 router.get('/users', protect, requireRole(['ADMIN']), asyncHandler(getAllUsers));
 router.get('/roles', protect, requireRole(['ADMIN']), asyncHandler(getRoles));

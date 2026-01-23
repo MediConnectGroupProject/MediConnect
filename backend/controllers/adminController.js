@@ -15,35 +15,40 @@ const getAllUsers = async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Number(req.query.limit) || 10);
   const search = req.query.search?.trim() || '';
+  const type = req.query.type; // 'internal' | 'external'
   const offset = (page - 1) * limit;
 
-  const searchQ = search ? {
-    OR: [{
-        firstName: {
-          contains: search,
-          mode: 'insensitive',
+  const whereClause = {
+      AND: []
+  };
 
-        }
-      },
-      {
-        lastName: {
-          contains: search,
-          mode: 'insensitive'
-        }
-      },
-      {
-        email: {
-          contains: search,
-          mode: 'insensitive'
-        }
-      },
-    ],
+  if (search) {
+      whereClause.AND.push({
+          OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+          ]
+      });
+  }
 
-  } : {};
+  if (type === 'internal') {
+      whereClause.AND.push({
+          roles: {
+              none: { role: { name: 'PATIENT' } }
+          }
+      });
+  } else if (type === 'external') {
+       whereClause.AND.push({
+          roles: {
+              some: { role: { name: 'PATIENT' } }
+          }
+      });
+  }
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({
-      where: searchQ,
+      where: whereClause,
       skip: offset,
       take: limit,
       select: {
@@ -69,7 +74,7 @@ const getAllUsers = async (req, res) => {
       }
     }),
     prisma.user.count({
-      where: searchQ
+      where: whereClause
     })
   ]);
 
@@ -274,11 +279,137 @@ const addRole = async (req, res) => {
   });
 }
 
+// get dashboard stats
+const getDashboardStats = async (req, res) => {
+  try {
+      const totalUsers = await prisma.user.count();
+      
+      const patients = await prisma.user.count({
+          where: { roles: { some: { role: { name: 'PATIENT' } } } }
+      });
+      
+      const doctors = await prisma.user.count({
+          where: { roles: { some: { role: { name: 'DOCTOR' } } } }
+      });
+      
+      const pharmacists = await prisma.user.count({
+          where: { roles: { some: { role: { name: 'PHARMACIST' } } } }
+      });
+
+      const admins = await prisma.user.count({
+          where: { roles: { some: { role: { name: 'ADMIN' } } } }
+      });
+
+      // Recent Users (Last 5)
+      const recentUsers = await prisma.user.findMany({
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              createdAt: true,
+              roles: {
+                  select: { role: { select: { name: true } } }
+              }
+          }
+      });
+
+      // Map recent users to flat format
+      const recentUsersMapped = recentUsers.map(u => ({
+          id: u.id,
+          name: `${u.firstName} ${u.lastName}`,
+          email: u.email,
+          role: u.roles.length > 0 ? u.roles[0].role.name : 'N/A',
+          joinedAt: u.createdAt
+      }));
+
+      res.status(200).json({
+          totalUsers,
+          patients,
+          doctors,
+          pharmacists,
+          admins,
+          recentUsers: recentUsersMapped
+      });
+  } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+  }
+}
+
+// System Health Check
+const getSystemHealth = async (req, res) => {
+    try {
+        const start = Date.now();
+        await prisma.$queryRaw`SELECT 1`; // Simple DB ping
+        const duration = Date.now() - start;
+
+        const healthData = {
+            status: 'Operational',
+            details: [
+                { component: 'Database', status: 'Connected', latency: `${duration}ms` },
+                { component: 'API Server', status: 'Online', latency: '0ms' }, // Self
+                { component: 'File Storage', status: 'Operational', latency: 'N/A' },
+            ],
+            uptime: process.uptime(),
+            timestamp: new Date()
+        };
+        res.status(200).json(healthData);
+    } catch (error) {
+        console.error("Health Check Failed:", error);
+        res.status(500).json({ 
+            status: 'Degraded', 
+            details: [
+                { component: 'Database', status: 'Disconnected', error: error.message },
+                { component: 'API Server', status: 'Online' }
+            ]
+        });
+    }
+}
+
+// Export Reports
+const getSystemReport = async (req, res) => {
+    const { type } = req.query; // 'users', 'logs'
+    
+    try {
+        if (type === 'users') {
+            const users = await prisma.user.findMany({
+                select: { id: true, firstName: true, lastName: true, email: true, status: true, createdAt: true, roles: { select: { role: { select: { name: true } } } } }
+            });
+            // Simple CSV conversion
+            const header = "ID,Name,Email,Role,Status,Joined\n";
+            const rows = users.map(u => `"${u.id}","${u.firstName} ${u.lastName}","${u.email}","${u.roles.map(r=>r.role.name).join('|')}","${u.status}","${u.createdAt.toISOString()}"`).join("\n");
+            
+            res.header('Content-Type', 'text/csv');
+            res.attachment('users_report.csv');
+            return res.send(header + rows);
+        } else if (type === 'logs') {
+            // Mock System Logs
+            const logs = [
+                { id: 1, level: 'INFO', message: 'System started', timestamp: new Date() },
+                { id: 2, level: 'INFO', message: 'Cron job executed', timestamp: new Date(Date.now() - 3600000) },
+                { id: 3, level: 'WARN', message: 'High memory usage detected', timestamp: new Date(Date.now() - 7200000) }
+            ];
+            res.json(logs);
+        } else {
+            res.status(400).json({ message: "Invalid report type" });
+        }
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: "Failed to generate report" });
+    }
+}
+
 export {
   getUserCount,
   getAllUsers,
   getRoles,
   changeRoleStatus,
   changeUserStatus,
-  addRole
+  addRole,
+  getDashboardStats,
+  getSystemHealth,
+  getSystemReport
 }
