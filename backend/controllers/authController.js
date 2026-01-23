@@ -98,14 +98,15 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     const {
         email,
-        password
+        password,
+        selectedRole
     } = req.body;
 
     // check user exists by email
     const user = await prisma.user.findFirst({
         where: {
             email: email,
-            status: 'ACTIVE',
+            // Status check moved below for specific messages
         },
         include: {
             roles: {
@@ -121,8 +122,20 @@ const login = async (req, res) => {
 
     if (!user) {
         return res.status(401).json({
-
             message: 'Invalid credentials'
+        });
+    }
+
+    // Check account status
+    if (user.status === 'SUSPENDED') {
+        return res.status(403).json({
+            message: 'Account Suspended'
+        });
+    }
+
+    if (user.status === 'INACTIVE') {
+        return res.status(403).json({
+            message: 'Account currently in Inactive status'
         });
     }
 
@@ -130,31 +143,69 @@ const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-
-        return res.status(400).json({
-
+         return res.status(400).json({
             message: 'Invalid credentials'
         });
     }
 
     // Check if email is verified
     if (!user.isEmailVerified) {
-
         return res.status(403).json({
             message: 'Please verify your email before logging in'
         });
     }
 
+    // --- Role Selection Logic ---
+    const activeRoles = user.roles.map(r => r.role.name);
+
+    if (activeRoles.length === 0) {
+        return res.status(403).json({
+            message: 'No active roles assigned. Contact support.'
+        });
+    }
+
+    // If multiple roles and no selection made yet
+    // Ensure selectedRole is treated as string and trimmed
+    const chosenRole = selectedRole ? String(selectedRole).trim() : null;
+
+    if (activeRoles.length > 1 && !chosenRole) {
+        return res.status(200).json({
+            action: 'SELECT_ROLE',
+            message: 'Please select a role to continue',
+            roles: activeRoles
+        });
+    }
+
+    let primaryRole;
+
+    if (activeRoles.length === 1) {
+        primaryRole = activeRoles[0];
+    } else {
+        // Multiple roles AND selection provided
+        // Case-insensitive check
+        const matchedRole = activeRoles.find(r => r.toUpperCase() === chosenRole.toUpperCase());
+        
+        if (!matchedRole) {
+             console.log(`Role mismatch! Active: ${activeRoles}, Chosen: ${chosenRole}`);
+             return res.status(400).json({
+                message: `Invalid role selection. Available: ${activeRoles.join(', ')}`
+            });
+        }
+        primaryRole = matchedRole; // Use the exact casing from DB
+    }
+
     // Generate auth token
-    const roleNames = user.roles.map(r => r.role.name);
-    const primaryRole = getPrimaryRole(roleNames);
+    const roleNames = activeRoles; // Keep all roles in token for reference, but primary determines dashboard access
+    
+    // Note: getPrimaryRole utility might be used elsewhere, but here we explicitly set it based on selection
 
     const tokenData = {
         id: user.id,
-        role: roleNames, // token uses flattened roles usually
+        role: roleNames, 
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        currentRole: primaryRole // Add current active role to token if needed by middleware
     };
     const token = generateAuthToken(tokenData, res);
 
@@ -247,7 +298,7 @@ const getMe = async (req, res) => {
             email: req.user.email,
             roles: req.user.roles,
             name: req.user.firstName + ' ' + req.user.lastName,
-            primaryRole: getPrimaryRole(req.user.roles),
+            primaryRole: req.user.currentRole || getPrimaryRole(req.user.roles),
         },
     });
 };

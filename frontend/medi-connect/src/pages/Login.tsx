@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -18,6 +19,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null); // for common errors
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
 
   const { setUser } = useAuth();
 
@@ -31,6 +34,14 @@ export default function Login() {
     try {
       // REAL API MODE
       const data = await loginUser(email, password);
+
+      if (data.action === 'SELECT_ROLE') {
+          setAvailableRoles(data.roles);
+          setShowRoleSelection(true);
+          setLoading(false);
+          return;
+      }
+
       // Real API call logic would go here...
 
       const user = data.user;
@@ -68,11 +79,37 @@ export default function Login() {
 
       setError(err.message);
     } finally {
-
-      setLoading(false);
+        if (!showRoleSelection) {
+            setLoading(false);
+        }
     }
 
   };
+
+  const handleRoleSelection = async (role: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await loginUser(email, password, role);
+        const user = data.user;
+        setUser(user as any);
+        localStorage.setItem("user", JSON.stringify(user));
+        setShowRoleSelection(false); // Close dialog
+
+          switch (user.primaryRole) {
+            case "ADMIN": navigate(`${RouteNames.DASHBOARD}/admin`); break;
+            case "DOCTOR": navigate(`${RouteNames.DASHBOARD}/doctor`); break;
+            case "PHARMACIST": navigate(`${RouteNames.DASHBOARD}/pharmacist`); break;
+            case "RECEPTIONIST": navigate(`${RouteNames.DASHBOARD}/receptionist`); break;
+            case "MLT": navigate(`${RouteNames.DASHBOARD}/mlt`); break;
+            default: navigate(`${RouteNames.DASHBOARD}/patient`);
+          }
+      } catch (err: any) {
+          setError(err.message);
+          setLoading(false);
+          // Do not close dialog so user can try again or see error
+      }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -119,6 +156,24 @@ export default function Login() {
                     <Button variant="link" size="sm" onClick={() => navigate('/')}>Back to Home</Button>
                 </CardFooter>
             </Card>
+
+            {/* Role Selection Dialog */}
+            <Dialog open={showRoleSelection} onOpenChange={setShowRoleSelection}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Select Role</DialogTitle>
+                        <DialogDescription>You have multiple active roles. Please select one to continue.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        {error && <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded mb-2">{error}</div>}
+                        {availableRoles.map((role) => (
+                            <Button key={role} variant="outline" className="w-full justify-start text-lg h-12" onClick={() => handleRoleSelection(role)}>
+                                Login as {role}
+                            </Button>
+                        ))}
+                    </div>
+                </DialogContent>
+            </Dialog>
     </div>
   );
 }

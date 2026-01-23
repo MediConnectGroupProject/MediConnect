@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from 'react-hot-toast';
 import { useAdminStats } from "../../hooks/adminUsersHook";
-import { getSystemHealth, getSystemReport } from "../../api/adminUsersApi";
+import { getSystemHealth, getSystemReport, getUserDetails } from "../../api/adminUsersApi";
 import { useEffect, useState } from "react";
 import { RouteNames } from "../../utils/RouteNames";
 import { Badge } from "../../components/ui/badge";
@@ -233,7 +233,11 @@ export default function AdminDashboard() {
           
           {showFullProfile ? (
              <div className="max-h-[70vh] overflow-y-auto pr-2">
-                <UserProfile userId={selectedUser?.id} readOnly={true} />
+                <UserProfile 
+                    userId={selectedUser?.id} 
+                    readOnly={true} 
+                    fetchUser={(id) => getUserDetails(id).then((res: any) => res as any)} 
+                />
              </div>
           ) : (
             <div className="grid gap-4 py-4">

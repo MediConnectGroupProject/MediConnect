@@ -36,7 +36,10 @@ const loginSchema = z.object({
         password: z
             .string()
             .trim()
-            .min(6, 'Password must be at least 6 characters long')
+            .min(6, 'Password must be at least 6 characters long'),
+        selectedRole: z
+            .string()
+            .optional()
     }).strict()
 });
 

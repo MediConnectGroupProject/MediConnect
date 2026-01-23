@@ -193,5 +193,79 @@ export const getSystemReport = async (type: 'users' | 'logs') => {
     // Return blob for file download
     if (type === 'users') return res.blob();
     // Return json for logs
+    // Return json for logs
     return res.json();
+}
+
+// create user
+export const createUser = async (userData: any) => {
+    const res = await fetch(`${API_URL}/users`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(userData)
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to create user");
+    return data;
+}
+
+// delete user
+export const deleteUser = async (userId: string) => {
+    const res = await fetch(`${API_URL}/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include"
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.message || "Failed to delete user");
+    }
+
+    return data;
+}
+
+// remove role
+export const removeRole = async (roleId: number, userId: string) => {
+    const res = await fetch(`${API_URL}/roles/user/${userId}/role/${roleId}`, {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include"
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.message || "Remove role failed");
+    }
+
+    return data;
+}
+
+// get single user details
+export const getUserDetails = async (userId: string) => {
+    const res = await fetch(`${API_URL}/users/${userId}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include"
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.message || "Failed to fetch user details");
+    }
+
+    return data;
 }

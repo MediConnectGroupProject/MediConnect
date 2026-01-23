@@ -51,6 +51,7 @@ passport.use(
           firstName: user.firstName,
           lastName: user.lastName,
           roles,
+          currentRole: payload.currentRole || null
         });
       } catch (err) {
         return done(err, false);

@@ -6,7 +6,10 @@ import {
     changeRoleStatus,
     addRole,
     changeUserStatus,
-    getAdminDashboardStats
+    getAdminDashboardStats,
+    createUser,
+    deleteUser,
+    removeRole
 } from "../api/adminUsersApi";
 import {
     useMutation,
@@ -172,4 +175,55 @@ export const updateUserStateMutation = () => {
             queryClient.invalidateQueries({ queryKey: ["users"] });
         },
     })
+}
+
+// create user
+export const useCreateUser = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (userData: any) => createUser(userData),
+        onSuccess: (data) => {
+            toast.success(data?.message || "User created successfully");
+            // Invalidate both internal and external user lists
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to create user");
+        }
+    });
+}
+
+// delete user
+export const useDeleteUser = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (userId: string) => deleteUser(userId),
+        onSuccess: (data) => {
+            toast.success(data?.message || "User deleted successfully");
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+            queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+            queryClient.invalidateQueries({ queryKey: ["userCount"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to delete user");
+        }
+    });
+}
+
+// remove role
+export const useRemoveRole = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ roleId, userId }: { roleId: number, userId: string }) => removeRole(roleId, userId),
+        onSuccess: (data) => {
+            toast.success(data?.message || "Role removed successfully");
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to remove role");
+        }
+    });
 }

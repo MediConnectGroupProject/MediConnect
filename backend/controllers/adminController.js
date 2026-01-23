@@ -1,5 +1,7 @@
 import prisma from '../config/connection.js'
 
+import bcrypt from 'bcryptjs';
+
 // Get user count
 const getUserCount = async (req, res) => {
 
@@ -402,6 +404,178 @@ const getSystemReport = async (req, res) => {
     }
 }
 
+// Create User (Internal)
+const createUser = async (req, res) => {
+    const { firstName, lastName, email, phone, password, roleName } = req.body;
+
+    // Validate inputs
+    if (!firstName || !lastName || !email || !password || !roleName) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Check if user exists
+    const userExists = await prisma.user.findUnique({ where: { email } });
+    if (userExists) {
+        return res.status(400).json({ message: 'User already exists' });
+    }
+
+    try {
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Find Role
+        const role = await prisma.role.findFirst({ where: { name: roleName } });
+        if (!role) {
+            return res.status(400).json({ message: "Invalid role selected" });
+        }
+
+        // Create User
+        const newUser = await prisma.user.create({
+            data: {
+                firstName,
+                lastName,
+                email,
+                phone,
+                password: hashedPassword,
+                isEmailVerified: true, // Auto-verified since admin created it
+                status: 'ACTIVE',
+                roles: {
+                    create: {
+                        roleId: role.id
+                    }
+                }
+            }
+        });
+
+        // Auto-create Doctor Profile if role is DOCTOR
+        if (roleName.toUpperCase() === 'DOCTOR') {
+            await prisma.doctor.create({
+                data: {
+                    doctorId: newUser.id,
+                    specialization: 'General Practitioner',
+                    availability: true
+                }
+            });
+        }
+        
+         // Auto-create Pharmacist Profile if role is PHARMACIST - wait, schema might not require it yet but good practice if needed.
+         // currently only doctor has a separate table in the provided snippets.
+
+        res.status(201).json({ message: "User created successfully", user: newUser });
+    } catch (error) {
+        console.error("Create User Error:", error);
+        res.status(500).json({ message: "Failed to create user" });
+    }
+}
+
+// Delete User
+const deleteUser = async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        // Check if user exists
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Delete User (Cascade will handle related data)
+        await prisma.user.delete({
+            where: { id: userId }
+        });
+
+        res.status(200).json({ message: "User deleted successfully" });
+    } catch (error) {
+        console.error("Delete User Error:", error);
+        res.status(500).json({ message: "Failed to delete user" });
+    }
+}
+
+// remove role from user
+const removeRole = async (req, res) => {
+    const { userId, roleId } = req.params;
+
+    try {
+        await prisma.userRole.delete({
+            where: {
+                userId_roleId: {
+                    userId,
+                    roleId: Number(roleId)
+                }
+            }
+        });
+
+        res.status(200).json({ message: "Role removed successfully" });
+    } catch (error) {
+        console.error("Remove Role Error:", error);
+        res.status(500).json({ message: "Failed to remove role" });
+    }
+}
+
+// get single user details with profile info
+const getUserDetails = async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                roles: {
+                    include: { role: true }
+                }
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        let profileData = {
+            id: user.id,
+            name: user.firstName + ' ' + user.lastName,
+            email: user.email,
+            phone: user.phone,
+            joinedDate: user.createdAt,
+            // Determine primary role for display or return all
+            role: user.roles.length > 0 ? user.roles[0].role.name.toLowerCase() : 'patient'
+        };
+
+        // Fetch extra details based on roles
+        const roleNames = user.roles.map(r => r.role.name);
+
+        if (roleNames.includes('DOCTOR')) {
+            const doctor = await prisma.doctor.findUnique({ where: { doctorId: userId } });
+            if (doctor) {
+                profileData = { ...profileData, ...doctor, role: 'doctor' };
+            }
+        } else if (roleNames.includes('PHARMACIST')) {
+            const pharmacist = await prisma.pharmacist.findUnique({ where: { pharmacistId: userId } });
+            if (pharmacist) {
+                profileData = { ...profileData, ...pharmacist, role: 'pharmacist' };
+            }
+        } else if (roleNames.includes('MLT')) {
+            const mlt = await prisma.labTechnician.findUnique({ where: { mltId: userId } });
+            if (mlt) {
+                profileData = { ...profileData, ...mlt, role: 'mlt' };
+            }
+        } else if (roleNames.includes('PATIENT')) {
+            const patient = await prisma.patient.findUnique({ where: { patientId: userId } });
+            if (patient) {
+                profileData = { ...profileData, ...patient, role: 'patient' };
+            }
+        }
+
+        res.status(200).json(profileData);
+    } catch (error) {
+        console.error("Get User Details Error:", error);
+        res.status(500).json({ message: "Failed to fetch user details" });
+    }
+}
+
 export {
   getUserCount,
   getAllUsers,
@@ -409,7 +583,11 @@ export {
   changeRoleStatus,
   changeUserStatus,
   addRole,
+  removeRole,
+  getUserDetails,
   getDashboardStats,
   getSystemHealth,
-  getSystemReport
+  getSystemReport,
+  createUser,
+  deleteUser
 }

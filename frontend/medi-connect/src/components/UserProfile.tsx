@@ -41,9 +41,10 @@ interface UserProfileProps {
   onEdit?: (data: UserProfileData) => void;
   role?: 'patient' | 'doctor' | 'pharmacist' | 'mlt' | 'admin' | 'receptionist'; // Override role for display context if needed
   isMe?: boolean; // NEW: If true, uses userApi for fetch/update "me"
+  fetchUser?: (userId: string) => Promise<UserProfileData>; // NEW: Custom fetcher
 }
 
-export function UserProfile({ userId, initialData, readOnly = false, onEdit, isMe = false }: UserProfileProps) {
+export function UserProfile({ userId, initialData, readOnly = false, onEdit, isMe = false, fetchUser: customFetch }: UserProfileProps) {
     
     // Initialize with null if fetching is needed
     const [data, setData] = useState<UserProfileData | null>(initialData || null);
@@ -60,7 +61,9 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, isM
                  try {
                      let fetchedData = null;
                      
-                     if (isMe) {
+                     if (customFetch && userId) {
+                         fetchedData = await customFetch(userId);
+                     } else if (isMe) {
                          const api = await import('../api/userApi');
                          fetchedData = await api.getProfile();
                      } else if (userId) {

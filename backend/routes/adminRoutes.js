@@ -20,10 +20,15 @@ import {
     addRole,
     getDashboardStats,
     getSystemHealth,
-    getSystemReport
+    getSystemReport,
+    createUser,
+    deleteUser,
+    removeRole,
+    getUserDetails
 } from '../controllers/adminController.js';
 
 // user related routes
+router.post('/users', protect, requireRole(['ADMIN']), asyncHandler(createUser));
 router.get('/stats', protect, requireRole(['ADMIN']), asyncHandler(getDashboardStats));
 router.get('/health', protect, requireRole(['ADMIN']), asyncHandler(getSystemHealth));
 router.get('/reports', protect, requireRole(['ADMIN']), asyncHandler(getSystemReport));
@@ -31,8 +36,14 @@ router.get('/reports', protect, requireRole(['ADMIN']), asyncHandler(getSystemRe
 router.get('/users/count', protect, requireRole(['ADMIN']), asyncHandler(getUserCount));
 router.get('/users', protect, requireRole(['ADMIN']), asyncHandler(getAllUsers));
 router.get('/roles', protect, requireRole(['ADMIN']), asyncHandler(getRoles));
+router.get('/users.count', protect, requireRole(['ADMIN']), asyncHandler(getUserCount)); // This was likely existing or implicit, but let's check. 
+// Actually line 35 is count.
+// Adding route for single user details.
+router.get('/users/:userId', protect, requireRole(['ADMIN']), asyncHandler(getUserDetails));
 router.patch('/roles/user/:userId/role/:roleId', protect, requireRole(['ADMIN']), asyncHandler(changeRoleStatus));
+router.delete('/roles/user/:userId/role/:roleId', protect, requireRole(['ADMIN']), asyncHandler(removeRole));
 router.post('/users/:userId', protect, requireRole(['ADMIN']), asyncHandler(addRole));
 router.patch('/users/:userId', protect, requireRole(['ADMIN']), asyncHandler(changeUserStatus));
+router.delete('/users/:userId', protect, requireRole(['ADMIN']), asyncHandler(deleteUser));
 
 export default router;
