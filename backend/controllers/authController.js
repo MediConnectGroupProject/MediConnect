@@ -10,6 +10,7 @@ import {
 import {
     getPrimaryRole
 } from '../utils/getPrimaryRole.js';
+import { logAction } from '../utils/auditUtils.js';
 
 // User registration
 const register = async (req, res) => {
@@ -31,10 +32,32 @@ const register = async (req, res) => {
     });
 
     if (userExists) {
-
         return res.status(400).json({
             message: 'User already exists'
         });
+    }
+
+    // Check Registration Enabled Setting
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings && !settings.registrationEnabled) {
+         // Allow only if first user (super admin fallback) or specific bypass logic? 
+         // For now, strict block.
+         // Actually, if it's an admin creating via Admin Portal, they use a different route usually?
+         // This 'register' endpoint is public. So we block it.
+         return res.status(403).json({
+             message: 'New registrations are currently disabled by the administrator.'
+         });
+    }
+
+    // Check Password Policy
+    if (settings && settings.enforceStrongPassword) {
+        // Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+        const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!strongPasswordRegex.test(password)) {
+            return res.status(400).json({
+                message: 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
+            });
+        }
     }
 
     // Hash the password
@@ -121,6 +144,12 @@ const login = async (req, res) => {
     });
 
     if (!user) {
+        await logAction({
+             action: 'LOGIN_FAILED',
+             details: `Invalid email attempt: ${email}`,
+             req,
+             status: 'FAILED'
+        });
         return res.status(401).json({
             message: 'Invalid credentials'
         });
@@ -139,10 +168,29 @@ const login = async (req, res) => {
         });
     }
 
+    // Check Maintenance Mode
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings && settings.maintenanceMode) {
+        // Allow ADMINS only
+        const isAdmin = user.roles.some(r => r.role.name === 'ADMIN');
+        if (!isAdmin) {
+             return res.status(503).json({
+                 message: 'System is currently under maintenance. Please try again later.'
+             });
+        }
+    }
+
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
+         await logAction({
+             userId: user.id,
+             action: 'LOGIN_FAILED',
+             details: 'Incorrect password',
+             req,
+             status: 'FAILED'
+        });
          return res.status(400).json({
             message: 'Invalid credentials'
         });
@@ -205,9 +253,18 @@ const login = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        currentRole: primaryRole // Add current active role to token if needed by middleware
+        currentRole: primaryRole,
+        tokenVersion: user.tokenVersion || 0 // Include version
     };
     const token = generateAuthToken(tokenData, res);
+
+    // Audit Log: Success
+    await logAction({
+        userId: user.id,
+        action: 'LOGIN_SUCCESS',
+        details: `User logged in as ${primaryRole}`,
+        req
+    });
 
     return res.status(200).json({
 
@@ -233,6 +290,15 @@ const logout = async (req, res) => {
         sameSite: 'lax',
         maxAge: new Date(0)
     });
+
+    if (req.user) {
+        await logAction({
+            userId: req.user.id,
+            action: 'LOGOUT_SUCCESS',
+            details: 'User logged out',
+            req
+        });
+    }
 
     return res.status(200).json({
 

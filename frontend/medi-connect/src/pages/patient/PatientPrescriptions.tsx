@@ -3,13 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../components/ui/button';
 import {QRCodeSVG} from 'qrcode.react';
 
-import type { Prescription } from '../../types';
+
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Pill, QrCode } from 'lucide-react';
 
+interface PrescriptionDisplay {
+  id: string;
+  date: string;
+  doctorName: string;
+  items: { name: string; dosage: string }[];
+  status: string;
+  qrCodeData: string;
+}
+
 export function PatientPrescriptions() {
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionDisplay[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

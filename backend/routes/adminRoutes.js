@@ -24,7 +24,10 @@ import {
     createUser,
     deleteUser,
     removeRole,
-    getUserDetails
+    getUserDetails,
+    getAuditLogs,
+    revokeStaffSessions,
+    getActiveStaff
 } from '../controllers/adminController.js';
 
 // user related routes
@@ -32,6 +35,9 @@ router.post('/users', protect, requireRole(['ADMIN']), asyncHandler(createUser))
 router.get('/stats', protect, requireRole(['ADMIN']), asyncHandler(getDashboardStats));
 router.get('/health', protect, requireRole(['ADMIN']), asyncHandler(getSystemHealth));
 router.get('/reports', protect, requireRole(['ADMIN']), asyncHandler(getSystemReport));
+router.get('/logs', protect, requireRole(['ADMIN']), asyncHandler(getAuditLogs));
+router.get('/active-staff', protect, requireRole(['ADMIN']), asyncHandler(getActiveStaff));
+router.post('/revoke-sessions', protect, requireRole(['ADMIN']), asyncHandler(revokeStaffSessions));
 
 router.get('/users/count', protect, requireRole(['ADMIN']), asyncHandler(getUserCount));
 router.get('/users', protect, requireRole(['ADMIN']), asyncHandler(getAllUsers));

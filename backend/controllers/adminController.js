@@ -1,6 +1,7 @@
 import prisma from '../config/connection.js'
 
 import bcrypt from 'bcryptjs';
+import { logAction } from '../utils/auditUtils.js';
 
 // Get user count
 const getUserCount = async (req, res) => {
@@ -388,13 +389,31 @@ const getSystemReport = async (req, res) => {
             res.attachment('users_report.csv');
             return res.send(header + rows);
         } else if (type === 'logs') {
-            // Mock System Logs
-            const logs = [
-                { id: 1, level: 'INFO', message: 'System started', timestamp: new Date() },
-                { id: 2, level: 'INFO', message: 'Cron job executed', timestamp: new Date(Date.now() - 3600000) },
-                { id: 3, level: 'WARN', message: 'High memory usage detected', timestamp: new Date(Date.now() - 7200000) }
-            ];
-            res.json(logs);
+            // Real Audit Logs CSV
+            const logs = await prisma.auditLog.findMany({
+                orderBy: { timestamp: 'desc' },
+                take: 1000, // Limit export size for performance
+                include: {
+                    user: {
+                        select: { firstName: true, lastName: true, email: true, roles: { select: { role: { select: { name: true } } } } }
+                    }
+                }
+            });
+
+            const header = "Timestamp,Action,Status,User,Email,Role,Details,IP\n";
+            const rows = logs.map(l => {
+                const userName = l.user ? `${l.user.firstName} ${l.user.lastName}` : 'System';
+                const userEmail = l.user ? l.user.email : 'N/A';
+                const userRole = l.user && l.user.roles.length > 0 ? l.user.roles[0].role.name : 'N/A';
+                // Escape quotes in details
+                const cleanDetails = l.details ? l.details.replace(/"/g, '""') : '';
+                
+                return `"${l.timestamp.toISOString()}","${l.action}","${l.status}","${userName}","${userEmail}","${userRole}","${cleanDetails}","${l.ipAddress || ''}"`;
+            }).join("\n");
+
+            res.header('Content-Type', 'text/csv');
+            res.attachment('audit_logs.csv');
+            return res.send(header + rows);
         } else {
             res.status(400).json({ message: "Invalid report type" });
         }
@@ -576,6 +595,188 @@ const getUserDetails = async (req, res) => {
     }
 }
 
+// Get Audit Logs
+const getAuditLogs = async (req, res) => {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Number(req.query.limit) || 20);
+    const offset = (page - 1) * limit;
+
+    try {
+        const [logs, total] = await Promise.all([
+            prisma.auditLog.findMany({
+                skip: offset,
+                take: limit,
+                orderBy: { timestamp: 'desc' },
+                include: {
+                    user: {
+                        select: { firstName: true, lastName: true, email: true, roles: { select: { role: { select: { name: true } } } } }
+                    }
+                }
+            }),
+            prisma.auditLog.count()
+        ]);
+
+        res.json({
+            data: logs,
+            meta: {
+                total,
+                page,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: "Failed to fetch logs" });
+    }
+}
+
+// Revoke Staff Sessions (Panic Button)
+const revokeStaffSessions = async (req, res) => {
+    try {
+        // Increment tokenVersion for all users who are NOT exclusively Patients or Admins
+        // Requirement: "End all internal sessions (except admins)"
+        // Implementation: Update users where roles include (Doctor OR Pharmacist OR MLT OR Receptionist)
+        // AND do not include ADMIN.
+        
+        // 1. Find IDs of users to revoke (Users with Staff roles who are NOT Admins)
+        const usersToRevoke = await prisma.user.findMany({
+            where: {
+                roles: {
+                    some: { 
+                        role: { 
+                            name: { in: ['DOCTOR', 'PHARMACIST', 'RECEPTIONIST', 'MLT'] } 
+                        } 
+                    },
+                    none: {
+                        role: { name: 'ADMIN' }
+                    }
+                }
+            },
+            select: { id: true }
+        });
+
+        const ids = usersToRevoke.map(u => u.id);
+
+        if (ids.length === 0) {
+            return res.status(200).json({ message: "No active staff sessions found to revoke." });
+        }
+
+        // 2. Increment tokenVersion
+        await prisma.user.updateMany({
+            where: {
+                id: { in: ids }
+            },
+            data: {
+                tokenVersion: { increment: 1 }
+            }
+        });
+
+        // 3. Insert specific LOGOUT logs so the "Active Staff" heuristic sees them as logged out
+        const logoutLogs = ids.map(id => ({
+            userId: id,
+            action: 'LOGOUT_SUCCESS',
+            details: 'System Force Logout (Security Panic Button)',
+            ipAddress: req.ip,
+            userAgent: 'System Admin Action',
+            status: 'SUCCESS',
+            timestamp: new Date()
+        }));
+
+        await prisma.auditLog.createMany({
+            data: logoutLogs
+        });
+
+        // 4. Log General Action
+        await logAction({
+            userId: req.user.id,
+            action: 'REVOKE_SESSIONS',
+            details: `Revoked sessions for ${ids.length} staff members (Internal Security Action)`,
+            req
+        });
+
+        res.status(200).json({ 
+            message: `Successfully revoked sessions for ${ids.length} staff members.`,
+            count: ids.length
+        });
+
+    } catch (e) {
+        console.error("Revoke Sessions Error:", e);
+        res.status(500).json({ message: "Failed to revoke sessions." });
+    }
+}
+
+// Get Active Staff (Heuristic: Login in last 24h, no Logout)
+const getActiveStaff = async (req, res) => {
+    try {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        
+        // distinct users who logged in recently
+        const recentLogins = await prisma.auditLog.findMany({
+            where: {
+                action: 'LOGIN_SUCCESS',
+                timestamp: { gt: twentyFourHoursAgo },
+                user: {
+                    roles: {
+                         // Internal only
+                         some: { role: { name: { in: ['DOCTOR', 'PHARMACIST', 'RECEPTIONIST', 'MLT', 'ADMIN'] } } },
+                         none: { role: { name: 'PATIENT' } }
+                    }
+                }
+            },
+            distinct: ['userId'],
+            select: {
+                userId: true,
+                timestamp: true,
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        roles: { select: { role: { select: { name: true } } } }
+                    }
+                }
+            },
+            orderBy: { timestamp: 'desc' }
+        });
+
+        // Filter out those who have logged out since their login
+        const activeSessions = [];
+        
+        for (const login of recentLogins) {
+            if(!login.userId || !login.user) continue;
+
+            const laterLogout = await prisma.auditLog.findFirst({
+                where: {
+                    userId: login.userId,
+                    action: 'LOGOUT_SUCCESS',
+                    timestamp: { gt: login.timestamp }
+                }
+            });
+
+            if (!laterLogout) {
+                // Determine primary role
+                const roles = login.user.roles.map(r => r.role.name);
+                const primaryRole = roles.find(r => r !== 'PATIENT') || 'Staff';
+
+                activeSessions.push({
+                    id: login.user.id,
+                    name: `${login.user.firstName} ${login.user.lastName}`,
+                    email: login.user.email,
+                    role: primaryRole,
+                    loginTime: login.timestamp
+                });
+            }
+        }
+
+        res.json(activeSessions);
+
+    } catch (error) {
+        console.error("Get Active Staff Error:", error);
+        res.status(500).json({ message: "Failed to fetch active staff" });
+    }
+}
+
 export {
   getUserCount,
   getAllUsers,
@@ -589,5 +790,8 @@ export {
   getSystemHealth,
   getSystemReport,
   createUser,
-  deleteUser
+  deleteUser,
+  getAuditLogs,
+  revokeStaffSessions,
+  getActiveStaff
 }

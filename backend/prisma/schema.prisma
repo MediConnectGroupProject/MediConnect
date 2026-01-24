@@ -37,6 +37,8 @@ model User {
   emailVerificationToken  String?
   emailVerificationExpiry DateTime?
 
+  tokenVersion Int @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -46,6 +48,7 @@ model User {
   notifications Notification[]
   doctors       Doctor[]
   patients      Patient[]
+  auditLogs     AuditLog[]
 }
 
 // user roles
@@ -299,4 +302,34 @@ model LabReport {
 
   patient     Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
   doctor      Doctor?  @relation(fields: [doctorId], references: [doctorId])
+}
+
+// System Settings
+model SystemSettings {
+  id                  Int     @id @default(autoincrement())
+  hospitalName        String  @default("MediConnect Hospital")
+  supportEmail        String  @default("support@mediconnect.com")
+  maintenanceMode     Boolean @default(false)
+  registrationEnabled Boolean @default(true)
+  emailNotifications  Boolean @default(true)
+  smsAlerts           Boolean @default(false)
+  autoBackup          Boolean @default(true)
+
+  // Security Policy
+  enforceStrongPassword Boolean @default(false)
+  
+  updatedAt           DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  // Nullable if system action or unauthenticated attempt
+  action    String   @db.VarChar(200) // e.g. "LOGIN", "UPDATE_SETTINGS"
+  details   String?  @db.Text
+  ipAddress String?  @db.VarChar(50)
+  userAgent String?  @db.Text
+  status    String   @default("SUCCESS") // SUCCESS, FAILED
+  timestamp DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

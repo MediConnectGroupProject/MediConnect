@@ -15,6 +15,8 @@ import pharmacistRoutes from './routes/pharmacistRoutes.js';
 import mltRoutes from './routes/mltRoutes.js';
 import receptionistRoutes from './routes/receptionistRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+
 
 
 // Load environment variables from .env file
@@ -45,6 +47,7 @@ app.use('/api/pharmacist', pharmacistRoutes);
 app.use('/api/mlt', mltRoutes);
 app.use('/api/receptionist', receptionistRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/settings', settingsRoutes);
 
 
 app.use(errorHandler);

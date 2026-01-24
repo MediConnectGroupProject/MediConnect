@@ -58,6 +58,94 @@ async function main() {
   });
   console.log(`Doctor ready: ${doctorEmail}`);
 
+  // 2.1 Admin Setup (Default Admin)
+  const adminEmail = 'admin@example.com';
+  const adminUser = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: { password: hashedPassword, isEmailVerified: true, status: 'ACTIVE' },
+    create: {
+      firstName: 'Super',
+      lastName: 'Admin',
+      email: adminEmail,
+      phone: '+94770000000',
+      password: hashedPassword,
+      isEmailVerified: true,
+      status: 'ACTIVE',
+      roles: { create: { role: { connect: { name: 'ADMIN' } } } }
+    }
+  });
+  
+  // Ensure Admin role connection if user exists but connection might not (upsert tweak)
+  const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+  const adminRoleLink = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } } });
+  if (!adminRoleLink) {
+      await prisma.userRole.create({ data: { userId: adminUser.id, roleId: adminRole.id } });
+  }
+  console.log(`Admin ready: ${adminEmail}`);
+
+  // 2.2 Pharmacist Setup
+  const pharmacistEmail = 'pharmacist@example.com';
+  const pharmacistUser = await prisma.user.upsert({
+    where: { email: pharmacistEmail },
+    update: { password: hashedPassword, isEmailVerified: true, status: 'ACTIVE' },
+    create: {
+      firstName: 'Anna',
+      lastName: 'Pharma',
+      email: pharmacistEmail,
+      phone: '+94770000002',
+      password: hashedPassword,
+      isEmailVerified: true,
+      status: 'ACTIVE',
+      roles: { create: { role: { connect: { name: 'PHARMACIST' } } } }
+    }
+  });
+  // Ensure role link
+  const pharmRole = await prisma.role.findUnique({ where: { name: 'PHARMACIST' } });
+  const pharmRoleLink = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: pharmacistUser.id, roleId: pharmRole.id } } });
+  if (!pharmRoleLink) await prisma.userRole.create({ data: { userId: pharmacistUser.id, roleId: pharmRole.id } });
+  
+  // 2.3 MLT Setup
+  const mltEmail = 'mlt@example.com';
+  const mltUser = await prisma.user.upsert({
+    where: { email: mltEmail },
+    update: { password: hashedPassword, isEmailVerified: true, status: 'ACTIVE' },
+    create: {
+      firstName: 'Mike',
+      lastName: 'Lab',
+      email: mltEmail,
+      phone: '+94770000003',
+      password: hashedPassword,
+      isEmailVerified: true,
+      status: 'ACTIVE',
+      roles: { create: { role: { connect: { name: 'MLT' } } } }
+    }
+  });
+  const mltRole = await prisma.role.findUnique({ where: { name: 'MLT' } });
+  const mltRoleLink = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: mltUser.id, roleId: mltRole.id } } });
+  if (!mltRoleLink) await prisma.userRole.create({ data: { userId: mltUser.id, roleId: mltRole.id } });
+
+  // 2.4 Receptionist Setup
+  const receptEmail = 'receptionist@example.com';
+  const receptUser = await prisma.user.upsert({
+    where: { email: receptEmail },
+    update: { password: hashedPassword, isEmailVerified: true, status: 'ACTIVE' },
+    create: {
+      firstName: 'Sarah',
+      lastName: 'Front',
+      email: receptEmail,
+      phone: '+94770000004',
+      password: hashedPassword,
+      isEmailVerified: true,
+      status: 'ACTIVE',
+      roles: { create: { role: { connect: { name: 'RECEPTIONIST' } } } }
+    }
+  });
+  const receptRole = await prisma.role.findUnique({ where: { name: 'RECEPTIONIST' } });
+  const receptRoleLink = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: receptUser.id, roleId: receptRole.id } } });
+  if (!receptRoleLink) await prisma.userRole.create({ data: { userId: receptUser.id, roleId: receptRole.id } });
+
+  console.log('Additional staff roles seeded.');
+
   // 3. Medicine Categories & Dosage
   const categories = ['Antibiotics', 'Analgesics', 'Cardiovascular', 'Supplements'];
   for (const cat of categories) {

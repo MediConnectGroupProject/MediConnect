@@ -1,13 +1,14 @@
-
 import React from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Heart, Shield, Clock, Phone, Mail, MapPin } from 'lucide-react';
 import logo from '../assets/logo-mediconnect.png';
+import { useSystemSettings } from '../context/SystemSettingsContext';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { settings, loading } = useSystemSettings();
 
   return (
     <div className="min-h-screen bg-white">
@@ -17,6 +18,9 @@ export default function LandingPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
               <img src={logo} alt="MediConnect" className="h-12 w-auto" />
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hidden sm:block">
+                 {loading ? '...' : settings.hospitalName}
+              </span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Services</a>
@@ -45,7 +49,7 @@ export default function LandingPage() {
                 <span className="text-blue-600">Reimagined.</span>
               </h1>
               <p className="text-lg lg:text-xl text-gray-500 mb-8 max-w-2xl mx-auto lg:mx-0">
-                Experience the future of healthcare with MediConnect. 
+                Experience the future of healthcare with {loading ? 'MediConnect' : settings.hospitalName}. 
                 Seamlessly manage appointments, prescriptions, and medical records 
                 in one secure platform.
               </p>
@@ -99,7 +103,7 @@ export default function LandingPage() {
       <section id="features" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose MediConnect?</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose {loading ? 'MediConnect' : settings.hospitalName}?</h2>
             <p className="text-gray-500 max-w-2xl mx-auto">We bring the hospital to your fingertips. Manage your entire healthcare journey with our comprehensive suite of tools.</p>
           </div>
           
@@ -133,6 +137,9 @@ export default function LandingPage() {
                <div className="col-span-1 md:col-span-2">
                   <div className="flex items-center gap-2 mb-4">
                      <img src={logo} alt="MediConnect" className="h-12 w-auto" />
+                     <span className="text-xl font-bold text-white">
+                        {loading ? '' : settings.hospitalName}
+                     </span>
                   </div>
                   <p className="text-gray-400 max-w-sm">
                      Empowering patients and providers with next-generation digital healthcare solutions. 
@@ -161,13 +168,13 @@ export default function LandingPage() {
                      </li>
                       <li className="flex items-center gap-3">
                         <Mail className="h-5 w-5 text-blue-400" />
-                        <span>support@mediconnect.com</span>
+                        <span>{loading ? 'support@mediconnect.com' : settings.supportEmail}</span>
                      </li>
                   </ul>
                </div>
             </div>
             <div className="border-t border-gray-800 pt-8 text-center text-gray-500 text-sm">
-               © 2024 MediConnect. All rights reserved.
+               © {new Date().getFullYear()} {loading ? 'MediConnect' : settings.hospitalName}. All rights reserved.
             </div>
          </div>
       </footer>

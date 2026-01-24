@@ -42,6 +42,11 @@ passport.use(
           return done(null, false);
         }
 
+        // Check Token Version (Session Invalidation)
+        if (payload.tokenVersion !== undefined && user.tokenVersion !== payload.tokenVersion) {
+             return done(null, false);
+        }
+
         // attach roles as array of strings
         const roles = user.roles.map(r => r.role.name);
 

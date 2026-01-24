@@ -801,8 +801,8 @@ export default function DoctorPortal() {
                                             .sort((a,b) => a.name.localeCompare(b.name));
                  
                  const sortedPatients = [
-                     ...(activeP ? [{...activeP, name: `🔵 ${activeP.name} (Active)`}] : []),
-                     ...upcomingPs.map(p => ({...p, name: `🕒 ${p.name} (Upcoming)`})),
+                     ...(activeP ? [{...activeP, name: `${activeP.name} (Active)`}] : []),
+                     ...upcomingPs.map(p => ({...p, name: `${p.name} (Upcoming)`})),
                      ...others
                  ];
 

@@ -269,3 +269,60 @@ export const getUserDetails = async (userId: string) => {
 
     return data;
 }
+
+// get audit logs
+export const getAuditLogs = async (page: number, limit: number) => {
+    const res = await fetch(`${API_URL}/logs?page=${page}&limit=${limit}`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include"
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.message || "Failed to fetch audit logs");
+    }
+
+    return data;
+}
+
+// revoke staff sessions
+export const revokeStaffSessions = async () => {
+    const res = await fetch(`${API_URL}/revoke-sessions`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include"
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.message || "Failed to revoke sessions");
+    }
+
+    return data;
+}
+
+// get active staff
+export const getActiveStaff = async () => {
+    const res = await fetch(`${API_URL}/active-staff`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include"
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.message || "Failed to fetch active staff");
+    }
+
+    return data;
+}

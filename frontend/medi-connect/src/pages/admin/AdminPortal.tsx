@@ -4,8 +4,9 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Search, Trash2 } from 'lucide-react';
+import { Search, Trash2, Download, ShieldAlert, Activity, Database, Server, Users, FileText } from 'lucide-react';
 import { addRoleMutation, allRoles, allUsers, updateRoleMutation, updateUserStateMutation, useCreateUser, useDeleteUser, useRemoveRole } from '../../hooks/adminUsersHook';
+import { revokeStaffSessions } from '../../api/adminUsersApi';
 import { PaginationLay } from '../layouts/PaginationLay';
 import toast from 'react-hot-toast';
 import { Spinner } from '../../components/ui/spinner';
@@ -13,6 +14,8 @@ import { CustomDropdownMenu } from '../../components/ui/customDropdownMenu';
 import { useDebounce } from '../../utils/useDebounce';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Separator } from '../../components/ui/separator';
+import { Switch } from '../../components/ui/switch';
+import { Settings } from 'lucide-react';
 
 interface ComponentUser {
   id: string;
@@ -47,6 +50,11 @@ export function AdminPortal() {
   const [isOpenUserStatusDialog, setIsOpenUserStatusDialog] = useState(false);
   const [isOpenDeleteDialog, setIsOpenDeleteDialog] = useState(false);
   const [userToDelete, setUserToDelete] = useState<ComponentUser | null>(null);
+  
+  // Revoke Dialog State
+  const [isOpenRevokeDialog, setIsOpenRevokeDialog] = useState(false);
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [selectedRole, setSelectedRole] = useState('PATIENT');
   const [selectedUser, setSelectedUser] = useState<ComponentUser | null>(null);
@@ -70,6 +78,18 @@ export function AdminPortal() {
   });
   const [formErrors, setFormErrors] = useState<{[key: string]: boolean}>({});
 
+  // System Settings State
+  const [systemSettings, setSystemSettings] = useState({
+      hospitalName: 'MediConnect Hospital',
+      supportEmail: 'support@mediconnect.com',
+      maintenanceMode: false,
+      registrationEnabled: true,
+      emailNotifications: true,
+      smsAlerts: false,
+      autoBackup: true,
+      enforceStrongPassword: false
+  });
+
   const roleActionOptions = [
     { value: 'ACTIVE' },
     { value: 'INACTIVE' },
@@ -82,6 +102,19 @@ export function AdminPortal() {
     setPageExternal(1);
     setPageInternal(1);
   }, [debouncedSearch]);
+
+  // Fetch Settings on Load
+  // Fetch Settings on Load (When entering Settings or Security tab)
+  useEffect(() => {
+    if (activeTab === 'settings' || activeTab === 'security') {
+        fetch(`${import.meta.env.VITE_API_URL}/settings`, { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+                if(data) setSystemSettings(data);
+            })
+            .catch(err => console.error("Failed to load settings", err));
+    }
+  }, [activeTab]);
 
   // handle roles status
   const handleRoleActionChange = (roleId: number, action: string) => {
@@ -509,188 +542,266 @@ export function AdminPortal() {
             </div>
           </TabsContent>
 
-          {/* System Settings Tab
+          {/* System Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">System Settings</h2>
-              <Button>Save All Changes</Button>
+              <Button onClick={async () => {
+                  try {
+                      const res = await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'include',
+                          body: JSON.stringify(systemSettings)
+                      });
+                      if(res.ok) {
+                          toast.success("Settings saved successfully!");
+                          // Reload page or re-fetch context if needed to update global state immediately
+                          window.location.reload(); 
+                      } else {
+                          toast.error("Failed to save settings");
+                      }
+                  } catch(e) {
+                      toast.error("Error saving settings");
+                  }
+              }}>Save Changes</Button>
             </div>
 
             <div className="grid gap-6">
-              {['General', 'Security', 'Notifications', 'Data', 'Backup'].map((category) => (
-                <Card key={category}>
-                  <CardHeader>
-                    <CardTitle>{category} Settings</CardTitle>
-                    <CardDescription>Configure {category.toLowerCase()} system parameters</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {systemSettings.filter(setting => setting.category === category).map((setting) => (
-                        <div key={setting.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex-1">
-                            <h3 className="font-medium">{setting.setting}</h3>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {setting.type === 'boolean' ? (
-                              <Switch />
-                            ) : setting.type === 'number' ? (
-                              <Input type="number" className="w-24" />
-                            ) : (
-                              <Input className="w-48" />
-                            )}
-                          </div>
+                
+                {/* General Settings */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>General Configuration</CardTitle>
+                        <CardDescription>Basic hospital information and contact details</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Hospital / Clinic Name</label>
+                                <Input 
+                                    value={systemSettings.hospitalName} 
+                                    onChange={(e) => setSystemSettings({...systemSettings, hospitalName: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Support Contact Email</label>
+                                <Input 
+                                    value={systemSettings.supportEmail} 
+                                    onChange={(e) => setSystemSettings({...systemSettings, supportEmail: e.target.value})} 
+                                />
+                            </div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
+                    </CardContent>
                 </Card>
-              ))}
+
+                {/* Security & Access */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Security & Access Control</CardTitle>
+                        <CardDescription>Manage system availability and user access</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
+                             <div>
+                                <h3 className="font-medium">Maintenance Mode</h3>
+                                <p className="text-sm text-gray-500">Lock the system for all users except Admins</p>
+                             </div>
+                             <Switch 
+                                checked={systemSettings.maintenanceMode}
+                                onCheckedChange={(c) => setSystemSettings({...systemSettings, maintenanceMode: c})}
+                             />
+                        </div>
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
+                             <div>
+                                <h3 className="font-medium">Allow New Registrations</h3>
+                                <p className="text-sm text-gray-500">If disabled, only Admins can create new users</p>
+                             </div>
+                             <Switch 
+                                checked={systemSettings.registrationEnabled}
+                                onCheckedChange={(c) => setSystemSettings({...systemSettings, registrationEnabled: c})}
+                             />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Notifications & Data */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Notifications</CardTitle>
+                            <CardDescription>Manage system alerts (Toggle Only)</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium">Email Notifications</span>
+                                <Switch 
+                                    checked={systemSettings.emailNotifications}
+                                    onCheckedChange={(c) => setSystemSettings({...systemSettings, emailNotifications: c})}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium">SMS Alerts (Urgent)</span>
+                                <Switch 
+                                    checked={systemSettings.smsAlerts}
+                                    onCheckedChange={(c) => setSystemSettings({...systemSettings, smsAlerts: c})}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Data Management</CardTitle>
+                            <CardDescription>Database and backup settings</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <div className="flex items-center justify-between">
+                                <span className="font-medium">Automated Daily Backups</span>
+                                <Switch 
+                                    checked={systemSettings.autoBackup}
+                                    onCheckedChange={(c) => setSystemSettings({...systemSettings, autoBackup: c})}
+                                />
+                            </div>
+                            <div className="pt-2">
+                                <Button variant="outline" className="w-full">
+                                    <Settings className="h-4 w-4 mr-2" /> 
+                                    Configure Backup Storage
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
             </div>
           </TabsContent>
 
           {/* Security Tab */}
-          {/* <TabsContent value="security" className="space-y-6">
+          {/* Security Tab */}
+          <TabsContent value="security" className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold">Security & Logs</h2>
+              <h2 className="text-2xl font-semibold">Security & Audit Logs</h2>
               <div className="flex gap-2">
-                <Button variant="outline">Export Logs</Button>
-                <Button>Security Scan</Button>
+                 {/* Policy: Strong Passwords */}
+                 <div className="flex items-center gap-2 bg-white p-2 rounded-lg border">
+                    <span className="text-sm font-medium">Enforce Strong Passwords</span>
+                    <Switch 
+                        checked={systemSettings.enforceStrongPassword || false}
+                        onCheckedChange={async (c) => {
+                           const newSettings = {...systemSettings, enforceStrongPassword: c};
+                           setSystemSettings(newSettings);
+                           // Auto-save on toggle
+                           try {
+                                await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify(newSettings)
+                                });
+                                toast.success("Security policy updated");
+                           } catch(e) { toast.error("Failed to update policy"); }
+                        }}
+                    />
+                 </div>
+
+                 {/* Revoke Sessions Danger Button */}
+                 <Button 
+                    variant="destructive" 
+                    className="ml-2"
+                    onClick={() => setIsOpenRevokeDialog(true)}
+                 >
+                    End All Staff Sessions
+                 </Button>
               </div>
+            </div>
+
+            {/* Active Staff Sessions Card */}
+            <div className="grid gap-6">
+                 <ActiveStaffSessionsCard key={refreshKey} />
             </div>
 
             <div className="grid gap-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Security Overview</CardTitle>
-                  <CardDescription>Current security status and threat detection</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                      <CardTitle>System Audit Logs</CardTitle>
+                      <CardDescription>Monitor system access and critical actions</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => window.open(`${import.meta.env.VITE_API_URL}/reports?type=logs`, '_blank')}>
+                      <Download className="h-4 w-4 mr-2" /> Download CSV
+                  </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">0</div>
-                      <div className="text-sm text-gray-600">Active Threats</div>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-yellow-600">3</div>
-                      <div className="text-sm text-gray-600">Failed Logins (24h)</div>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">99.9%</div>
-                      <div className="text-sm text-gray-600">Uptime</div>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">256</div>
-                      <div className="text-sm text-gray-600">Active Sessions</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Security Logs</CardTitle>
-                  <CardDescription>Backup & security event monitoring</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {securityLogs.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <Shield className={`h-5 w-5 ${log.status === 'success' ? 'text-green-500' : 'text-red-500'
-                            }`} />
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-medium">{log.event}</h3>
-                              <Badge variant={log.status === 'success' ? 'secondary' : 'destructive'}>
-                                {log.status}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600">User: {log.user} • IP: {log.ip}</p>
-                            <p className="text-sm text-gray-500">{log.timestamp} • {log.details}</p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm">View Details</Button>
-                      </div>
-                    ))}
-                  </div>
+                  <AuditLogTable /> 
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
           {/* Reports Tab */}
-          {/* <TabsContent value="reports" className="space-y-6">
+          <TabsContent value="reports" className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold">System Reports</h2>
-              <Button>Generate Custom Report</Button>
+              <h2 className="text-2xl font-semibold">System Reports & Analytics</h2>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Available Reports</CardTitle>
-                <CardDescription>Patient statistics, daily/monthly summaries, and system analytics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {systemReports.map((report) => (
-                    <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium">{report.title}</h3>
-                          <Badge variant="outline">{report.type}</Badge>
-                        </div>
-                        <p className="text-sm text-gray-600">{report.description}</p>
-                        <p className="text-sm text-gray-500">
-                          Last generated: {report.lastGenerated} • Size: {report.size}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">View</Button>
-                        <Button variant="outline" size="sm">Download</Button>
-                        <Button size="sm">Regenerate</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid gap-6 md:grid-cols-2">
+                <SystemHealthCard />
+                <DemographicsCard />
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>System Analytics</CardTitle>
-                <CardDescription>Platform usage and performance metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-6 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">1,248</div>
-                    <div className="text-sm text-gray-600">Total Users</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">856</div>
-                    <div className="text-sm text-gray-600">Active This Month</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">2,340</div>
-                    <div className="text-sm text-gray-600">Prescriptions</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">4,567</div>
-                    <div className="text-sm text-gray-600">Appointments</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">99.8%</div>
-                    <div className="text-sm text-gray-600">System Uptime</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-teal-600">15.2GB</div>
-                    <div className="text-sm text-gray-600">Data Storage</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent> */}
+            <DataExportCard />
+          </TabsContent>
         </Tabs>
+            
+            {/* ... Dialogs ... */}
+
+            {/* Revoke Session Confirmation Dialog */}
+             <Dialog open={isOpenRevokeDialog} onOpenChange={() => setIsOpenRevokeDialog(false)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-red-900 flex items-center">
+                            <ShieldAlert className="h-5 w-5 mr-2 text-red-600" /> 
+                            Emergency: End All Staff Sessions
+                        </DialogTitle>
+                        <DialogDescription>
+                            This action is irreversible.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2 space-y-3">
+                        <div className="bg-red-50 border border-red-100 p-3 rounded-md text-sm text-red-800">
+                             <p className="font-bold">What will happen:</p>
+                             <ul className="list-disc list-inside mt-1 space-y-1">
+                                <li>All logged-in staff (Doctors, Pharmacists, etc.) will be <strong>logged out immediately</strong>.</li>
+                                <li>The admin (you) will remain logged in.</li>
+                                <li>Patient sessions are <strong>NOT</strong> affected.</li>
+                             </ul>
+                        </div>
+                        <p className="text-sm">Use this only in case of a security breach or system maintenance.</p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsOpenRevokeDialog(false)}>Cancel</Button>
+                        <Button 
+                            variant="destructive" 
+                            disabled={isRevoking}
+                            onClick={async () => {
+                                setIsRevoking(true);
+                                try {
+                                    const res = await revokeStaffSessions();
+                                    toast.success(res.message);
+                                    setIsOpenRevokeDialog(false);
+                                    setRefreshKey(prev => prev + 1); // Refresh Active Staff Card
+                                } catch(e) {
+                                    toast.error("Failed to revoke sessions");
+                                } finally {
+                                    setIsRevoking(false);
+                                }
+                            }}
+                        >
+                            {isRevoking ? <div className='flex items-center gap-2'><Spinner /> Revoking...</div> : 'Confirm & End Sessions'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Permission Dialog */}
             <Dialog open={isOpen} onOpenChange={() => { setSelectedUser(null); setIsOpen(false) }}>
@@ -838,4 +949,322 @@ export function AdminPortal() {
       </div>
     </div>
   );
+}
+
+function AuditLogTable() {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [limit] = useState(10);
+    const [total, setTotal] = useState(0);
+
+    /* Direct API call bypassing Hook for simplicity in this specific component */
+    useEffect(() => {
+        setLoading(true);
+        // Using the import() dynamically in previous attempt failed. Let's just use the imported function.
+        // Wait, I am importing `getAuditLogs` from `adminUsersHook`.
+        // Let's make sure it is exported there.
+        // Actually, I added it to `adminUsersApi.ts`. `adminUsersHook` usually wraps it.
+        // I should probably add it to the Top Level Import or use the API directly.
+        // Let's reuse the API import pattern if possible, or just add a hook.
+        
+        // I'll assume I can import it from `../../api/adminUsersApi` directly for now to avoid editing another file.
+        import('../../api/adminUsersApi').then(api => {
+             api.getAuditLogs(page, limit).then(data => {
+                if(data && data.data) {
+                    setLogs(data.data);
+                    setTotal(data?.meta?.total || 0);
+                }
+            }).catch(e => console.error(e)).finally(() => setLoading(false));
+        });
+       
+    }, [page, limit]);
+
+    return (
+        <div className="space-y-4">
+            {loading && <div className="text-center py-4"><Spinner /></div>}
+            
+            {!loading && logs.length === 0 && <p className="text-center text-gray-500">No logs found.</p>}
+
+            {!loading && logs.map((log) => (
+                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg bg-gray-50/50 text-sm">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            <Badge variant={log.status === 'SUCCESS' ? 'default' : 'destructive'} className="text-[10px] px-1 py-0 h-5">
+                                {log.status}
+                            </Badge>
+                            <span className="font-bold text-gray-800">{log.action}</span>
+                            <span className="text-gray-400 text-xs">•</span>
+                            <span className="text-gray-600">{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div className="text-gray-600 pl-1">
+                            {log.user ? (
+                                <span className="font-medium text-blue-700">{log.user.firstName} {log.user.lastName} ({log.user.email})</span>
+                            ) : 'System / Guest'}
+                            <span className="text-gray-400 mx-2">|</span>
+                            <span className="text-gray-500">{log.details || 'No details'}</span>
+                        </div>
+                    </div>
+                </div>
+            ))}
+            
+            {!loading && total > limit && (
+                <div className="flex justify-end gap-2 mt-2">
+                    <Button 
+                        variant="outline" size="sm" 
+                        onClick={() => setPage(p => Math.max(1, p - 1))} 
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span className="flex items-center text-sm">Page {page}</span>
+                    <Button 
+                        variant="outline" size="sm" 
+                        onClick={() => setPage(p => p + 1)} 
+                        disabled={page * limit >= total}
+                    >
+                        Next
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SystemHealthCard() {
+    const [health, setHealth] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        import('../../api/adminUsersApi').then(api => {
+             api.getSystemHealth().then(data => setHealth(data))
+             .catch(e => console.error(e))
+             .finally(() => setLoading(false));
+        });
+    }, []);
+
+    const getStatusColor = (status: string) => status === 'Operational' || status === 'Online' || status === 'Connected' ? 'bg-green-500' : 'bg-red-500';
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-blue-600" />
+                    System Health Monitor
+                </CardTitle>
+                <CardDescription>Real-time operational status</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {loading ? <Spinner /> : (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                            <div className="flex items-center gap-3">
+                                <div className={`h-3 w-3 rounded-full ${getStatusColor(health?.status || 'Error')}`}></div>
+                                <span className="font-medium">Overall System Status</span>
+                            </div>
+                            <span className="font-bold">{health?.status}</span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            {health?.details?.map((d: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2 text-gray-600">
+                                        {d.component === 'Database' ? <Database className="h-3 w-3" /> : <Server className="h-3 w-3" />}
+                                        {d.component}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${getStatusColor(d.status) === 'bg-green-500' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                            {d.status}
+                                        </span>
+                                        {d.latency && <span className="text-xs text-gray-400 font-mono">{d.latency}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="pt-2 text-[10px] text-gray-400 text-right">
+                            Last check: {new Date(health?.timestamp).toLocaleTimeString()} • Uptime: {Math.floor(health?.uptime / 60)}m
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function DemographicsCard() {
+    const [stats, setStats] = useState<any>(null);
+    useEffect(() => {
+         import('../../api/adminUsersApi').then(api => {
+             api.getAdminDashboardStats().then(data => setStats(data));
+         });
+    }, []);
+
+    if (!stats) return <Card><CardContent className="p-6"><Spinner /></CardContent></Card>;
+
+    const total = stats.totalUsers || 1;
+    const getPercent = (count: number) => ((count / total) * 100).toFixed(1) + '%';
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-indigo-600" />
+                    Platform Demographics
+                </CardTitle>
+                <CardDescription>User distribution by role</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <div className="space-y-5">
+                    {/* Visual Bar */}
+                    <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden flex">
+                        <div style={{ width: getPercent(stats.patients) }} className="h-full bg-blue-500" title="Patients" />
+                        <div style={{ width: getPercent(stats.doctors) }} className="h-full bg-green-500" title="Doctors" />
+                        <div style={{ width: getPercent(stats.pharmacists) }} className="h-full bg-orange-500" title="Pharmacists" />
+                        <div style={{ width: getPercent(stats.admins) }} className="h-full bg-gray-800" title="Admins" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 rounded-full bg-blue-500" />
+                            <div className="flex flex-col">
+                                <span className="text-xs text-gray-500">Patients</span>
+                                <span className="font-bold">{stats.patients}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <div className="h-3 w-3 rounded-full bg-green-500" />
+                            <div className="flex flex-col">
+                                <span className="text-xs text-gray-500">Doctors</span>
+                                <span className="font-bold">{stats.doctors}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <div className="h-3 w-3 rounded-full bg-orange-500" />
+                            <div className="flex flex-col">
+                                <span className="text-xs text-gray-500">Pharmacists</span>
+                                <span className="font-bold">{stats.pharmacists}</span>
+                            </div>
+                        </div>
+                         <div className="flex items-center gap-2">
+                             <div className="h-3 w-3 rounded-full bg-gray-800" />
+                            <div className="flex flex-col">
+                                <span className="text-xs text-gray-500">Admins</span>
+                                <span className="font-bold">{stats.admins}</span>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function DataExportCard() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Download className="h-5 w-5 text-gray-700" />
+                    Data Export Center
+                </CardTitle>
+                <CardDescription>Download system records for external analysis</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid md:grid-cols-3 gap-4">
+                    <div className="p-4 border rounded-lg bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                                <Users className="h-5 w-5" />
+                            </div>
+                            <h3 className="font-medium">User Registry</h3>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-4">Complete list of registered users including role, status, and join date.</p>
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => window.open(`${import.meta.env.VITE_API_URL}/reports?type=users`, '_blank')}>
+                            <FileText className="h-4 w-4 mr-2" /> Export CSV
+                        </Button>
+                    </div>
+
+                    <div className="p-4 border rounded-lg bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
+                                <ShieldAlert className="h-5 w-5" />
+                            </div>
+                            <h3 className="font-medium">Security Audit Logs</h3>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-4">Detailed security events including logins, failures, and system actions.</p>
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => window.open(`${import.meta.env.VITE_API_URL}/reports?type=logs`, '_blank')}>
+                            <FileText className="h-4 w-4 mr-2" /> Export CSV
+                        </Button>
+                    </div>
+
+                    <div className="p-4 border rounded-lg bg-gray-50 opacity-50 cursor-not-allowed">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-green-100 rounded-lg text-green-600">
+                                <Activity className="h-5 w-5" />
+                            </div>
+                            <h3 className="font-medium">Financial Report</h3>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-4">Revenue and billing summaries. (Coming Soon)</p>
+                        <Button variant="outline" size="sm" className="w-full" disabled>
+                             Coming Soon
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function ActiveStaffSessionsCard() {
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        setLoading(true);
+        import('../../api/adminUsersApi').then(api => {
+             api.getActiveStaff().then(data => {
+                if(data) setSessions(data);
+            }).catch(e => console.error(e)).finally(() => setLoading(false));
+        });
+    }, []);
+
+    if (loading) return <Card><CardContent className="p-6 text-center"><Spinner /> Checking active sessions...</CardContent></Card>;
+
+    return (
+        <Card>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    Active Staff Sessions
+                </CardTitle>
+                <CardDescription>
+                    {sessions.length} staff member{sessions.length !== 1 ? 's' : ''} currently online (heuristic based).
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {sessions.length === 0 ? (
+                    <p className="text-sm text-gray-500">No active staff sessions detected.</p>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {sessions.map((s: any) => (
+                            <div key={s.id} className="flex items-center gap-3 p-3 bg-green-50 border border-green-100 rounded-lg">
+                                <div className="h-8 w-8 rounded-full bg-green-200 flex items-center justify-center text-green-700 font-bold text-xs">
+                                    {s.name.charAt(0)}
+                                </div>
+                                <div className="overflow-hidden">
+                                    <p className="text-sm font-medium truncate">{s.name}</p>
+                                    <p className="text-xs text-green-700 truncate">{s.role}</p>
+                                    <p className="text-[10px] text-gray-400">Login: {new Date(s.loginTime).toLocaleTimeString()}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
 }
