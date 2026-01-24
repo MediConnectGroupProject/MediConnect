@@ -36,17 +36,19 @@ app.use(express.urlencoded({
   extended: true
 }));
 app.use(cookieParser()); 
-app.use(passport.initialize());
-
 // use routes here ...
+app.use((req, res, next) => {
+    // console.log(`DEBUG: Incoming Request: ${req.method} ${req.url}`); // Optional: Keep commented or remove
+    next();
+});
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes); // Moved specific route before generic admin api
 app.use('/api', adminRoutes);
 app.use('/api/doctor', doctorRoutes);
 app.use('/api/patient', patientRoutes);
 app.use('/api/pharmacist', pharmacistRoutes);
 app.use('/api/mlt', mltRoutes);
 app.use('/api/receptionist', receptionistRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/settings', settingsRoutes);
 
 
@@ -55,6 +57,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
 
   console.log(`Server is running on port ${PORT}`);
+  console.log("DEBUG: SERVER CODE IS UPDATED AND RUNNING [ID: CHECK_1]");
 });
 
 export default app;

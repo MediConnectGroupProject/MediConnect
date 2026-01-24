@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { User, FileText, Edit, AlertCircle } from 'lucide-react';
+import { User, FileText, Edit, AlertCircle, Lock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 
 // Defines the shape of user profile data
 interface UserProfileData {
@@ -32,6 +34,7 @@ interface UserProfileData {
   pharmacySection?: string; // For Pharmacist
   labSection?: string; // For MLT
   joinedDate?: string;
+  lastLogin?: string;
 }
 
 interface UserProfileProps {
@@ -137,6 +140,51 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, isM
         setIsEditing(false);
     };
 
+    // Change Password State
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+
+    const handleChangePassword = async () => {
+        setPasswordError('');
+        setPasswordSuccess('');
+        
+        if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+            setPasswordError("Please fill in all fields");
+            return;
+        }
+
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            setPasswordError("New passwords don't match");
+            return;
+        }
+
+        // Basic client-side validation for password strength
+        // RegEx: Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+        const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+        if (!strongPasswordRegex.test(passwordForm.newPassword)) {
+            setPasswordError('Password must be at least 8 chars long and include uppercase, lowercase, number, and special char.');
+            return;
+        }
+        
+        try {
+            const api = await import('../api/userApi');
+            await api.changePassword({ 
+                currentPassword: passwordForm.currentPassword, 
+                newPassword: passwordForm.newPassword 
+            });
+            setPasswordSuccess("Password changed successfully");
+            setTimeout(() => {
+                setIsChangePasswordOpen(false);
+                setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                setPasswordSuccess('');
+            }, 2000);
+        } catch (e: any) {
+            setPasswordError(e.message || "Failed to change password");
+        }
+    };
+
     if (loading) return <div className="p-8 text-center">Loading profile...</div>;
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
     if (!data) return <div className="p-8 text-center">No profile data found.</div>;
@@ -155,9 +203,8 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, isM
                              <Input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
                         </div>
                         <div className="col-span-12 md:col-span-6 space-y-2">
-                             {/* Email often read-only for security, but making editable for now */}
                              <Label>Email</Label>
-                             <Input value={editForm.email} disabled className="bg-gray-100 cursor-not-allowed" title="Contact admin to change email" />
+                             <Input value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
                         </div>
                          <div className="col-span-12 md:col-span-4 space-y-2">
                              <Label>Phone</Label>
@@ -249,7 +296,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, isM
                      <CardContent className="p-0 flex flex-col md:flex-row items-center gap-6">
                         <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl font-bold">
                             {data.name ? 
-                                data.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+                                data.name.split(' ').map(n => n[0]).join('').substring(0, 1).toUpperCase() 
                                 : <User className="h-12 w-12" />
                             }
                         </div>
@@ -258,7 +305,13 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, isM
                                 <h2 className="text-2xl font-bold text-gray-800">{data.name}</h2>
                                 <Badge variant="secondary" className="capitalize">{data.role}</Badge>
                             </div>
+
                             <p className="text-gray-500">{data.email} • {data.phone}</p>
+                            {data.lastLogin && (
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Last active: {new Date(data.lastLogin).toLocaleString()}
+                                </p>
+                            )}
                             <div className="flex flex-wrap gap-4 mt-3 justify-center md:justify-start">
                                 {data.role === 'patient' && (
                                     <>
@@ -285,9 +338,16 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, isM
                             </div>
                         </div>
                         {(!readOnly || isMe) && (
-                            <Button variant="outline" onClick={() => setIsEditing(true)}>
-                                <Edit className="h-4 w-4 mr-2" /> Edit Profile
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                                    <Edit className="h-4 w-4 mr-2" /> Edit Profile
+                                </Button>
+                                {isMe && (
+                                    <Button variant="outline" onClick={() => setIsChangePasswordOpen(true)}>
+                                        <Lock className="h-4 w-4 mr-2" /> Change Password
+                                    </Button>
+                                )}
+                            </div>
                         )}
                     </CardContent>
                     )}
@@ -416,6 +476,52 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, isM
                     </CardContent>
                 </Card>
             )}
+
+            {/* Password Change Dialog */}
+            <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Change Password</DialogTitle>
+                        <DialogDescription>
+                            Enter your current password and a new strong password to update your credentials.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        {passwordError && <div className="text-sm text-red-500 bg-red-50 p-2 rounded">{passwordError}</div>}
+                        {passwordSuccess && <div className="text-sm text-green-500 bg-green-50 p-2 rounded">{passwordSuccess}</div>}
+                        
+                        <div className="space-y-2">
+                            <Label>Current Password</Label>
+                            <Input 
+                                type="password" 
+                                value={passwordForm.currentPassword} 
+                                onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})} 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>New Password</Label>
+                            <Input 
+                                type="password" 
+                                value={passwordForm.newPassword} 
+                                onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} 
+                            />
+                            <p className="text-xs text-gray-500">Min 8 chars, uppercase, lowercase, number, special char.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Confirm New Password</Label>
+                            <Input 
+                                type="password" 
+                                value={passwordForm.confirmPassword} 
+                                onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} 
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsChangePasswordOpen(false)}>Cancel</Button>
+                        <Button onClick={handleChangePassword} disabled={!!passwordSuccess}>Update Password</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
         </div>
     );

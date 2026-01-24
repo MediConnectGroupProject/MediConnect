@@ -1,4 +1,6 @@
 import prisma from '../config/connection.js';
+import bcrypt from 'bcryptjs';
+import { logAction } from '../utils/auditUtils.js';
 
 // Get current user profile
 export const getMe = async (req, res) => {
@@ -8,14 +10,22 @@ export const getMe = async (req, res) => {
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: {
-                roles: {
-                    include: {
-                        role: true
-                    }
-                },
+                roles: { include: { role: true } },
                 doctors: true, // If doctor
                 patients: true, // If patient
                 license: true // If staff
+            }
+        });
+
+        // Fetch last login
+        const lastLoginLog = await prisma.auditLog.findFirst({
+            where: {
+                userId: userId,
+                action: 'LOGIN_SUCCESS',
+                status: 'SUCCESS'
+            },
+            orderBy: {
+                timestamp: 'desc'
             }
         });
 
@@ -36,6 +46,7 @@ export const getMe = async (req, res) => {
             
             // Default role for UI context (first role or preferred)
             role: user.roles[0]?.role.name.toLowerCase() || 'patient',
+            lastLogin: lastLoginLog ? lastLoginLog.timestamp : null
         };
 
         // Enrich with role specific data
@@ -75,8 +86,8 @@ export const getMe = async (req, res) => {
         res.status(200).json(profile);
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error("GetMe Error:", error);
+        res.status(500).json({ message: error.message || 'Internal server error' });
     }
 }
 
@@ -94,7 +105,7 @@ export const updateMe = async (req, res) => {
              if(names.length > 1) userUpdateData.lastName = names.slice(1).join(' ');
         }
         if (data.phone) userUpdateData.phone = data.phone;
-        // Email update usually requires verification, skip for now or allow if trusted
+        if (data.email) userUpdateData.email = data.email;
 
         await prisma.user.update({
             where: { id: userId },
@@ -151,5 +162,48 @@ export const updateMe = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Failed to update profile' });
+    }
+}
+
+export const changePassword = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { currentPassword, newPassword } = req.body;
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if(!user) return res.status(404).json({ message: 'User not found' });
+
+        // Verify current password
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            await logAction({ userId, action: 'PASSWORD_CHANGE_FAILED', details: 'Incorrect current password', req, status: 'FAILED' });
+            return res.status(400).json({ message: 'Incorrect current password' });
+        }
+
+        // Validate new password policy
+        // Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+        const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+        if (!strongPasswordRegex.test(newPassword)) {
+            return res.status(400).json({
+                message: 'Password must be at least 8 chars long and include uppercase, lowercase, number, and special char.'
+            });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+        });
+
+        await logAction({ userId, action: 'PASSWORD_CHANGE', details: 'User changed password successfully', req });
+
+        res.status(200).json({ message: 'Password changed successfully' });
+
+    } catch (error) {
+        console.error("Change Password Error:", error);
+        res.status(500).json({ message: 'Failed to change password' });
     }
 }
