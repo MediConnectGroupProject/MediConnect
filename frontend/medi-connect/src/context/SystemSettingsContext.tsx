@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 interface SystemSettings {
     hospitalName: string;
     supportEmail: string;
+    hospitalAddress: string;
+    hospitalPhone: string;
     maintenanceMode: boolean;
     registrationEnabled: boolean;
     enforceStrongPassword?: boolean;
@@ -13,6 +15,8 @@ interface SystemSettings {
 const defaultSettings: SystemSettings = {
     hospitalName: 'MediConnect Hospital',
     supportEmail: 'support@mediconnect.com',
+    hospitalAddress: '123 Health Avenue, Med City',
+    hospitalPhone: '+1 (555) 123-4567',
     maintenanceMode: false,
     registrationEnabled: true,
     enforceStrongPassword: false
@@ -46,6 +50,7 @@ export const SystemSettingsProvider = ({ children }: { children: React.ReactNode
             });
             if (res.ok) {
                 const data = await res.json();
+                console.log("Frontend received settings:", data);
                 setSettings(data);
             }
         } catch (error) {

@@ -82,6 +82,8 @@ export function AdminPortal() {
   const [systemSettings, setSystemSettings] = useState({
       hospitalName: 'MediConnect Hospital',
       supportEmail: 'support@mediconnect.com',
+      hospitalAddress: '123 Health Avenue, Med City',
+      hospitalPhone: '+1 (555) 123-4567',
       maintenanceMode: false,
       registrationEnabled: true,
       emailNotifications: true,
@@ -589,6 +591,20 @@ export function AdminPortal() {
                                 <Input 
                                     value={systemSettings.supportEmail} 
                                     onChange={(e) => setSystemSettings({...systemSettings, supportEmail: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Hospital Address</label>
+                                <Input 
+                                    value={systemSettings.hospitalAddress} 
+                                    onChange={(e) => setSystemSettings({...systemSettings, hospitalAddress: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Contact Phone Number</label>
+                                <Input 
+                                    value={systemSettings.hospitalPhone} 
+                                    onChange={(e) => setSystemSettings({...systemSettings, hospitalPhone: e.target.value})} 
                                 />
                             </div>
                         </div>

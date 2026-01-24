@@ -314,6 +314,9 @@ model SystemSettings {
   emailNotifications  Boolean @default(true)
   smsAlerts           Boolean @default(false)
   autoBackup          Boolean @default(true)
+  
+  hospitalAddress     String  @default("123 Health Avenue, Med City")
+  hospitalPhone       String  @default("+1 (555) 123-4567")
 
   // Security Policy
   enforceStrongPassword Boolean @default(false)

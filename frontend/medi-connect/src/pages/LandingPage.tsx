@@ -160,11 +160,11 @@ export default function LandingPage() {
                    <ul className="space-y-4 text-gray-400">
                      <li className="flex items-center gap-3">
                         <MapPin className="h-5 w-5 text-blue-400" />
-                        <span>123 Health Avenue, Med City</span>
+                        <span>{loading ? '123 Health Avenue, Med City' : settings.hospitalAddress}</span>
                      </li>
                      <li className="flex items-center gap-3">
                         <Phone className="h-5 w-5 text-blue-400" />
-                        <span>+1 (555) 123-4567</span>
+                        <span>{loading ? '+1 (555) 123-4567' : settings.hospitalPhone}</span>
                      </li>
                       <li className="flex items-center gap-3">
                         <Mail className="h-5 w-5 text-blue-400" />

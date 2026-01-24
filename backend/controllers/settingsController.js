@@ -13,7 +13,9 @@ const getSettings = async (req, res) => {
             settings = await prisma.systemSettings.create({
                 data: {
                     hospitalName: 'MediConnect Hospital',
-                    supportEmail: 'support@mediconnect.com'
+                    supportEmail: 'support@mediconnect.com',
+                    hospitalAddress: '123 Health Avenue, Med City',
+                    hospitalPhone: '+1 (555) 123-4567'
                 }
             });
         }
@@ -31,6 +33,8 @@ const updateSettings = async (req, res) => {
         const { 
             hospitalName, 
             supportEmail, 
+            hospitalAddress,
+            hospitalPhone,
             maintenanceMode, 
             registrationEnabled,
             emailNotifications,
@@ -49,6 +53,8 @@ const updateSettings = async (req, res) => {
                 data: {
                     hospitalName,
                     supportEmail,
+                    hospitalAddress,
+                    hospitalPhone,
                     maintenanceMode,
                     registrationEnabled,
                     emailNotifications, // Ensure we handle booleans correctly
@@ -63,6 +69,8 @@ const updateSettings = async (req, res) => {
                 data: {
                     hospitalName,
                     supportEmail,
+                    hospitalAddress,
+                    hospitalPhone,
                     maintenanceMode,
                     registrationEnabled,
                     emailNotifications,
@@ -79,7 +87,7 @@ const updateSettings = async (req, res) => {
         await logAction({
             userId: req.user.id,
             action: 'UPDATE_SYSTEM_SETTINGS',
-            details: `Updated system settings (Hospital: ${hospitalName}, Maint: ${maintenanceMode})`,
+            details: `Updated system settings (Hospital: ${hospitalName})`,
             req
         });
 
@@ -100,14 +108,23 @@ const getPublicSettings = async (req, res) => {
             return res.status(200).json({
                 hospitalName: 'MediConnect Hospital',
                 supportEmail: 'support@mediconnect.com',
+                hospitalAddress: '123 Health Avenue, Med City',
+                hospitalPhone: '+1 (555) 123-4567',
                 maintenanceMode: false,
                 registrationEnabled: true
             });
         }
 
+
+        console.log("Sending Public Settings:", {
+            hospitalName: settings.hospitalName,
+            address: settings.hospitalAddress
+        });
         res.status(200).json({
             hospitalName: settings.hospitalName,
             supportEmail: settings.supportEmail,
+            hospitalAddress: settings.hospitalAddress || '123 Health Avenue, Med City',
+            hospitalPhone: settings.hospitalPhone || '+1 (555) 123-4567',
             maintenanceMode: settings.maintenanceMode,
             registrationEnabled: settings.registrationEnabled
         });
