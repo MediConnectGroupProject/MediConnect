@@ -2,7 +2,9 @@ export type Role = 'DOCTOR' | 'PATIENT' | 'PHARMACIST' | 'ADMIN' | 'RECEPTIONIST
 
 export interface User {
   id: string;
-  name: string;
+  name: string; // Keep for backward compatibility if used
+  firstName: string;
+  lastName: string;
   email: string;
   roles: Role[];
   primaryRole: Role;

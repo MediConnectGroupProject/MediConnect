@@ -1,16 +1,30 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Search, Scan, QrCode, AlertTriangle } from 'lucide-react';
-import { getPrescriptionQueue, getInventory } from '../../api/pharmacistApi';
+import { getPrescriptionQueue, getInventory, getAlerts } from '../../api/pharmacistApi';
+import { PharmacyPOS } from './PharmacyPOS';
+
+
 
 export function PharmacistPortal() {
-  const [activeTab, setActiveTab] = useState('prescriptions');
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'prescriptions';
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  
+  // Update state when URL changes (if deeper navigation uses params)
+  useEffect(() => {
+      const tab = searchParams.get('tab');
+      if (tab) setActiveTab(tab);
+  }, [searchParams]);
+
   const [prescriptionQueue, setPrescriptionQueue] = useState<any[]>([]);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<{ lowStock: any[], expiring: any[] }>({ lowStock: [], expiring: [] });
 
 
   useEffect(() => {
@@ -20,7 +34,10 @@ export function PharmacistPortal() {
             setPrescriptionQueue(queue);
 
             const inv = await getInventory(1, 100, '');
-            setInventoryItems(inv.data || []); // Handle paginated response structure
+            setInventoryItems(inv.data || []); 
+
+            const alertsData = await getAlerts();
+            setAlerts(alertsData);
         } catch (error) {
             console.error("Failed to fetch pharmacist data", error);
         }
@@ -39,18 +56,7 @@ export function PharmacistPortal() {
       submittedAt: new Date(p.issuedAt).toLocaleString()
   }));
 
-  // Derive alerts from real inventory
-  const lowStockAlerts = inventoryItems
-      .filter((i: any) => i.stock < 50) 
-      .map((i: any) => ({
-          id: i.medicineId,
-          medication: i.name,
-          currentStock: i.stock,
-          minThreshold: 50,
-          supplier: 'PharmaCorp', 
-          lastOrdered: 'N/A', 
-          severity: i.stock < 20 ? 'high' : 'medium'
-      }));
+
 
       
       // Derive ready for pickup from queue
@@ -64,7 +70,7 @@ export function PharmacistPortal() {
       }));
 
     // Sales data requires a new endpoint (Sales/Invoices). Setting to empty for now.
-    const dailySales: any[] = [];
+
 
 
   return (
@@ -195,50 +201,68 @@ export function PharmacistPortal() {
           <TabsContent value="alerts" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Stock Alerts</h2>
-              <Button>Configure Alert Settings</Button>
+              <Button onClick={() => window.location.reload()}>Refresh Alerts</Button>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Low Stock Alerts</CardTitle>
-                <CardDescription>Medications that need to be reordered</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {lowStockAlerts.map((alert: any) => (
-                    <div key={alert.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <AlertTriangle className={`h-6 w-6 ${
-                          alert.severity === 'high' ? 'text-red-500' :
-                          alert.severity === 'medium' ? 'text-yellow-500' : 'text-orange-500'
-                        }`} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Low Stock */}
+                <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <AlertTriangle className="text-red-500 h-5 w-5" />
+                        Low Stock Items
+                    </CardTitle>
+                    <CardDescription>Items below threshold (50)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                    {alerts.lowStock.length === 0 ? <p className="text-gray-500 text-sm">No low stock items.</p> : 
+                        alerts.lowStock.map((alert: any) => (
+                        <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg bg-red-50/50">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium">{alert.medication}</h3>
-                            <Badge variant={
-                              alert.severity === 'high' ? 'destructive' :
-                              alert.severity === 'medium' ? 'default' : 'secondary'
-                            }>
-                              {alert.severity} priority
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-600">
-                            Current: {alert.currentStock} units • Minimum: {alert.minThreshold} units
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Supplier: {alert.supplier} • Last ordered: {alert.lastOrdered}
-                          </p>
+                            <h3 className="font-medium text-red-900">{alert.name}</h3>
+                            <p className="text-xs text-red-700">
+                                Stock: <b>{alert.stock}</b> / {alert.threshold}
+                            </p>
+                            <p className="text-xs text-gray-500">Supplier: {alert.supplier}</p>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">Contact Supplier</Button>
-                        <Button size="sm">Place Order</Button>
-                      </div>
+                        <Button size="sm" variant="outline" className="border-red-200 hover:bg-red-100 text-red-700">Reorder</Button>
+                        </div>
+                    ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+                </Card>
+
+                {/* Expiring Soon */}
+                <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <AlertTriangle className="text-orange-500 h-5 w-5" />
+                        Expiring Batches
+                    </CardTitle>
+                    <CardDescription>Batches expiring within 90 days</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                    {alerts.expiring.length === 0 ? <p className="text-gray-500 text-sm">No expiring batches.</p> : 
+                        alerts.expiring.map((batch: any) => (
+                        <div key={batch.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-50/50">
+                        <div className="flex-1">
+                            <h3 className="font-medium text-orange-900">{batch.medicineName}</h3>
+                            <p className="text-xs text-orange-700">
+                                Batch: {batch.batchNumber} • Qty: {batch.quantity}
+                            </p>
+                            <p className="text-xs text-red-600 font-semibold">
+                                Expires: {new Date(batch.expiryDate).toLocaleDateString()}
+                            </p>
+                        </div>
+                        <Badge variant="outline" className="border-orange-200 text-orange-700">Check</Badge>
+                        </div>
+                    ))}
+                    </div>
+                </CardContent>
+                </Card>
+            </div>
           </TabsContent>
 
           {/* Ready for Pickup Tab */}
@@ -281,87 +305,9 @@ export function PharmacistPortal() {
             </Card>
           </TabsContent>
 
-          {/* Point of Sale Tab */}
+            {/* Point of Sale Tab */}
           <TabsContent value="pos" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold">Point of Sale</h2>
-              <div className="flex gap-2">
-                <Button variant="outline">Generate Receipt</Button>
-                <Button>New Sale</Button>
-              </div>
-            </div>
-
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Today's Sales</CardTitle>
-                  <CardDescription>Process orders and billing</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {dailySales.map((sale) => (
-                      <div key={sale.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium">{sale.customer}</h3>
-                            <Badge variant="outline">{sale.paymentMethod}</Badge>
-                          </div>
-                          <p className="text-sm text-gray-600">{sale.items}</p>
-                          <p className="text-sm text-gray-500">Time: {sale.time}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium text-green-600">{sale.amount}</p>
-                          <Button variant="outline" size="sm" className="mt-2">Print Receipt</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid grid-cols-4 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Today's Revenue</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">$0.00</div>
-                    <p className="text-sm text-gray-500">No data</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Transactions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">0</div>
-                    <p className="text-sm text-gray-500">0 pending</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Average Sale</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">$0.00</div>
-                    <p className="text-sm text-gray-500">No data</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Payment Methods</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-1">
-                      <div className="text-sm">No transactions today</div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+              <PharmacyPOS />
           </TabsContent>
         </Tabs>
       </div>

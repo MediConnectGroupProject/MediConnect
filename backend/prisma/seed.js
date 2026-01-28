@@ -201,6 +201,93 @@ async function main() {
   }
   console.log('Medicines seeded.');
 
+  // 4.1 Suppliers
+  console.log('Seeding Suppliers...');
+  const suppliersData = [
+      { name: 'PharmaCorp', contactPerson: 'John Sales', email: 'sales@pharmacorp.com', phone: '+94771111111' },
+      { name: 'MediSupply', contactPerson: 'Jane Dist', email: 'orders@medisupply.com', phone: '+94772222222' }
+  ];
+
+  const dbSuppliers = [];
+  for (const s of suppliersData) {
+      let supplier = await prisma.supplier.findFirst({ where: { name: s.name } });
+      if (!supplier) {
+          supplier = await prisma.supplier.create({
+              data: {
+                  name: s.name,
+                  contactPerson: s.contactPerson,
+                  email: s.email,
+                  phone: s.phone,
+                  address: faker.location.streetAddress()
+              }
+          });
+      }
+      dbSuppliers.push(supplier);
+  }
+
+  // 4.2 Batches (Inventory & Alerts)
+  console.log('Seeding Batches...');
+  const medicines = await prisma.medicine.findMany(); // fetch the ones we just created
+  
+  // Clear existing batches to avoid duplicates if re-seeding (optional, but safer for cleaner data)
+  // await prisma.batch.deleteMany({}); // Dangerous? Let's just append.
+
+  for (const med of medicines) {
+      // 1. Normal Batch
+      await prisma.batch.create({
+          data: {
+              medicineId: med.medicineId,
+              batchNumber: `BN-${faker.string.alphanumeric(5).toUpperCase()}`,
+              supplierId: dbSuppliers[0].id,
+              quantity: 100,
+              originalQuantity: 100,
+              expiryDate: new Date('2026-12-31'), // Far future
+              unitCost: med.price - 5
+          }
+      });
+      
+      // Update stock
+      await prisma.medicine.update({
+          where: { medicineId: med.medicineId },
+          data: { stock: { increment: 100 } }
+      });
+  }
+
+  // Specific Alert Scenarios
+  
+  // Create 5 Low Stock Items (Critical Inventory)
+  console.log('Seeding Critical Inventory...');
+  const shuffledMeds = [...medicines].sort(() => 0.5 - Math.random());
+  for (let i = 0; i < 5; i++) {
+      if (shuffledMeds[i]) {
+        await prisma.medicine.update({
+            where: { medicineId: shuffledMeds[i].medicineId },
+            data: { stock: Math.floor(Math.random() * 8) + 1 } // Stock 1-9
+        });
+      }
+  }
+
+  // Expiring Batch (Amoxicillin)
+  const expiringMed = medicines.find(m => m.name === 'Amoxicillin');
+  if (expiringMed) {
+      await prisma.batch.create({
+          data: {
+              medicineId: expiringMed.medicineId,
+              batchNumber: `EXP-${faker.string.alphanumeric(5).toUpperCase()}`,
+              supplierId: dbSuppliers[1].id,
+              quantity: 50,
+              originalQuantity: 50,
+              expiryDate: new Date(new Date().setDate(new Date().getDate() + 30)), // Expires in 30 days
+              unitCost: expiringMed.price - 2
+          }
+      });
+       await prisma.medicine.update({
+          where: { medicineId: expiringMed.medicineId },
+          data: { stock: { increment: 50 } }
+      });
+  }
+
+
   // 5. Patients (Generate 15 random patients)
   console.log('Seeding Patients...');
   const patients = [];
@@ -226,8 +313,9 @@ async function main() {
       // Assign Role
       const patientRole = await prisma.role.findUnique({ where: { name: 'PATIENT' } });
       try {
-        await prisma.userRole.create({ data: { userId: user.id, roleId: patientRole.id } });
-      } catch (e) {} // Ignore if exists
+        const userRole = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: user.id, roleId: patientRole.id } } });
+        if (!userRole) await prisma.userRole.create({ data: { userId: user.id, roleId: patientRole.id } });
+      } catch (e) {} 
 
       // Patient Profile
       const patient = await prisma.patient.upsert({
@@ -276,16 +364,7 @@ async function main() {
           doctorId: doctorUser.id,
           date: inProgressTime,
           time: inProgressTime,
-          status: 'PENDING' // or CONFIRMED, UI handles logic. If we want "In progress" status in DB:
-          // Schema enum: PENDING, CONFIRMED, COMPLETED, CANCELED. 
-          // Wait, Schema AppointmentStatus doesn't have IN_PROGRESS. 
-          // PENDING = Upcoming? 
-          // Let's stick to PENDING/CONFIRMED for upcoming. 
-          // DoctorPortal code handles 'in_progress' in local state or mapped from something?
-          // Line 60 in Portal: `status: apt.status.toLowerCase()`
-          // If I want 'in_progress' to appear in Queue, I might need to adjust logic or use 'CONFIRMED' as 'Checked In'.
-          // Valid Schema Statuses: PENDING, CONFIRMED, COMPLETED, CANCELED.
-          // I will use CONFIRMED to represent "Ready to be seen/Checked In".
+          status: 'PENDING' 
       }
   });
 
@@ -319,32 +398,26 @@ async function main() {
       });
   }
 
-  // 7. Lab Reports (For "Reports" Tab and Stats)
-  // Pending Reports
-  await prisma.labReport.create({
-      data: {
+  // 7. Lab Reports
+  await prisma.labReport.createMany({
+    data: [
+        {
           patientId: patients[0].patientId,
           doctorId: doctorUser.id,
           testType: 'Full Blood Count',
           status: 'PENDING',
           priority: 'URGENT',
           orderedDate: new Date()
-      }
-  });
-  await prisma.labReport.create({
-      data: {
+        },
+        {
           patientId: patients[2].patientId,
           doctorId: doctorUser.id,
           testType: 'Lipid Profile',
           status: 'PENDING',
           priority: 'NORMAL',
           orderedDate: new Date()
-      }
-  });
-
-  // Completed Reports
-  await prisma.labReport.create({
-      data: {
+        },
+        {
           patientId: patients[3].patientId,
           doctorId: doctorUser.id,
           testType: 'Fasting Blood Sugar',
@@ -352,21 +425,89 @@ async function main() {
           priority: 'NORMAL',
           orderedDate: new Date(new Date().setDate(today.getDate() - 1)),
           results: 'Normal range. Glucose: 95 mg/dL'
-      }
+        }
+    ]
   });
 
-  // 8. Prescriptions (For Stats / Requests)
-  // Pending Requests (If "PrescriptionStatus" has PENDING)
-  // Schema: PENDING, VERIFIED, READY, DISPENSED, REJECTED.
-  await prisma.prescription.create({
-      data: {
-          userId: patients[6].patientId,
-          notes: 'Request renewal for Metformin',
-          status: 'PENDING',
-          issuedAt: new Date()
-          // No items yet if it's a request, or maybe items are proposed
+  // 8. Pharmacy: Prescriptions & Sales History
+  console.log('Seeding Pharmacy Sales & Prescriptions...');
+
+  // 8.1 Create Bills for last 7 days (Sales Trend)
+  for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      
+      // Random number of sales per day (0-5)
+      const dailySalesCount = Math.floor(Math.random() * 5) + 1;
+      
+      for (let j = 0; j < dailySalesCount; j++) {
+          const med = medicines[Math.floor(Math.random() * medicines.length)];
+          const qty = Math.floor(Math.random() * 3) + 1;
+          const amount = med.price * qty;
+
+          await prisma.bill.create({
+              data: {
+                  patientId: patients[Math.floor(Math.random() * patients.length)].patientId,
+                  // Use random invoice number to avoid unique constraint errors on re-seed
+                  invoiceNumber: `INV-${faker.string.alphanumeric(8).toUpperCase()}`,
+                  amount: amount,
+                  status: 'PAID',
+                  type: 'PHARMACY',
+                  issuedDate: date,
+                  paidDate: date,
+                  items: {
+                      create: {
+                          medicineId: med.medicineId,
+                          name: med.name,
+                          quantity: qty,
+                          unitPrice: med.price,
+                          totalPrice: amount
+                      }
+                  }
+              }
+          });
       }
-  });
+  }
+
+  // 8.2 Recent Prescriptions (Requests)
+  // Create 3 PENDING prescriptions
+  for (let k = 0; k < 3; k++) {
+      await prisma.prescription.create({
+          data: {
+              userId: patients[k].patientId, // Patient
+              appointmentId: null, // Walk-in or direct
+              notes: 'Monthly refill',
+              status: 'PENDING',
+              issuedAt: new Date(),
+              prescriptionItems: {
+                  create: {
+                      medicineId: medicines[0].medicineId, // Amoxicillin
+                      dosage: '500mg',
+                      instructions: 'Take one daily'
+                  }
+              }
+          }
+      });
+  }
+
+  // Create 2 READY prescriptions (Pickup Ready)
+  for (let k = 3; k < 5; k++) {
+      await prisma.prescription.create({
+          data: {
+              userId: patients[k].patientId,
+              notes: 'Ready for pickup',
+              status: 'READY',
+              issuedAt: new Date(new Date().setHours(today.getHours() - 2)),
+              prescriptionItems: {
+                  create: {
+                      medicineId: medicines[1].medicineId, // Paracetamol
+                      dosage: '500mg'
+                  }
+              }
+          }
+      });
+  }
+
 
   console.log('Seed completed successfully.');
 }

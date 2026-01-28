@@ -49,6 +49,7 @@ model User {
   doctors       Doctor[]
   patients      Patient[]
   auditLogs     AuditLog[]
+  stockAdjustments StockAdjustment[]
 }
 
 // user roles
@@ -157,6 +158,77 @@ model Medicine {
   medicineDosage    DosageForms?       @relation(fields: [dosageId], references: [dosageId], onDelete: SetNull)
   inventoryLogs     InventoryLogs[]
   prescriptionItems PrescriptionItem[]
+
+  // New POS Fields
+  allowSplit  Boolean @default(true)
+  
+  batches     Batch[]
+  unitConversions UnitConversion[]
+  suppliers   Supplier[]
+  billItems   BillItem[]
+  stockAdjustments StockAdjustment[]
+}
+
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String
+  contactPerson String?
+  email       String?
+  phone       String?
+  address     String?
+  
+  batches     Batch[]
+  medicines   Medicine[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Batch {
+  id              String    @id @default(uuid())
+  batchNumber     String
+  medicineId      String
+  medicine        Medicine  @relation(fields: [medicineId], references: [medicineId])
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+  
+  quantity        Int       // Current stock in Base Units (Tablets)
+  originalQuantity Int      // Initial stock
+  
+  expiryDate      DateTime
+  manufactureDate DateTime?
+  unitCost        Decimal   @db.Decimal(10, 2)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  stockAdjustments StockAdjustment[]
+  billItems        BillItem[]
+  prescriptionItems PrescriptionItem[]
+}
+
+model UnitConversion {
+  id          String @id @default(uuid())
+  medicineId  String
+  medicine    Medicine @relation(fields: [medicineId], references: [medicineId])
+  unitName    String // "Box", "Card"
+  multiplier  Int    // e.g. 400, 20
+  barcode     String?
+}
+
+model StockAdjustment {
+  id          String   @id @default(uuid())
+  medicineId  String
+  medicine    Medicine @relation(fields: [medicineId], references: [medicineId])
+  batchId     String?
+  
+  batch       Batch?   @relation(fields: [batchId], references: [id])
+  
+  quantity    Int      // Positive (Return) or Negative (Wastage)
+  reason      String   // "RETURN", "EXPIRED", "DAMAGED", "THEFT"
+  notes       String?
+  userId      String   
+  user        User     @relation(fields: [userId], references: [id]) 
+  createdAt   DateTime @default(now())
 }
 
 enum changeType {
@@ -235,6 +307,9 @@ model PrescriptionItem {
 
   prescription Prescription @relation(fields: [prescriptionId], references: [prescriptionId], onDelete: Cascade)
   medicine     Medicine?    @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)
+  
+  batchId      String?
+  batch        Batch?       @relation(fields: [batchId], references: [id])
 }
 
 model Notification {
@@ -273,6 +348,25 @@ model Bill {
   paidDate      DateTime?
   
   patient       Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  items         BillItem[]
+}
+
+model BillItem {
+  id          String   @id @default(uuid())
+  billId      String
+  bill        Bill     @relation(fields: [billId], references: [billId], onDelete: Cascade)
+  
+  medicineId  String
+  medicine    Medicine @relation(fields: [medicineId], references: [medicineId])
+  
+  batchId     String?
+  batch       Batch?   @relation(fields: [batchId], references: [id])
+  
+  quantity    Int      // In Base Units
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  
+  name        String   // Snapshot of name
 }
 
 // Lab Reports
