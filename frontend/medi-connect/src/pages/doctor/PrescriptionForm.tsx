@@ -110,48 +110,63 @@ export function PrescriptionForm({ activeAppointment }: PrescriptionFormProps) {
             <div className="space-y-4">
               <Label>Medications</Label>
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-start border p-2 rounded bg-gray-50">
-                  <div className="col-span-12 md:col-span-4">
-                     <p className="text-xs mb-1">Drug Name</p>
-                     <Input placeholder="Paracetamol" value={item.name} onChange={e => updateItem(index, 'name', e.target.value)} required />
-                  </div>
-                  <div className="col-span-6 md:col-span-2">
-                     <p className="text-xs mb-1">Dosage</p>
-                     <Input 
-                        placeholder="500" 
-                        value={item.dosage} 
-                        onChange={e => updateItem(index, 'dosage', e.target.value)}
-                        onBlur={e => {
-                            const val = e.target.value;
-                            if(val && /^\d+$/.test(val)) {
-                                updateItem(index, 'dosage', val + 'mg');
-                            }
-                        }}
-                     />
-                  </div>
-                  <div className="col-span-6 md:col-span-2">
-                     <p className="text-xs mb-1">Qty</p>
-                     <Input 
-                        placeholder="e.g. 10" 
-                        value={(item as any).tabletCount || ''} 
-                        onChange={e => updateItem(index, 'tabletCount', e.target.value)} 
-                     />
-                  </div>
-                  <div className="col-span-10 md:col-span-3">
-                     <p className="text-xs mb-1">Duration</p>
-                     <Input placeholder="e.g. 5 days" value={item.duration} onChange={e => updateItem(index, 'duration', e.target.value)} />
-                  </div>
-                  <div className="col-span-2 md:col-span-1 flex flex-col justify-end pb-0.5">
-                    <Button type="button" variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50 h-10 w-10" onClick={() => removeItem(index)}>
+                <div key={index} className="flex flex-col gap-3 border p-3 rounded-md bg-gray-50 relative">
+                  <div className="absolute top-2 right-2">
+                    <Button type="button" variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8" onClick={() => removeItem(index)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+
+                  <div className="w-full pr-10">
+                     <p className="text-xs font-semibold mb-1 text-gray-700">Drug Name</p>
+                     <Input placeholder="Paracetamol" className="bg-white" value={item.name} onChange={e => updateItem(index, 'name', e.target.value)} required />
+                  </div>
                   
-                  <div className="col-span-12 flex flex-col md:flex-row gap-4 mt-2">
-                      <div className="w-full md:w-1/3">
-                         <p className="text-xs mb-1">Timing</p>
+                  <div className="grid grid-cols-3 gap-2 w-full">
+                    <div className="col-span-1">
+                       <p className="text-xs font-semibold mb-1 text-gray-700">Dosage</p>
+                       <Input 
+                          placeholder="500" 
+                          className="bg-white"
+                          value={item.dosage} 
+                          onChange={e => updateItem(index, 'dosage', e.target.value)}
+                          onBlur={e => {
+                              const val = e.target.value;
+                              if(val && /^\d+$/.test(val)) {
+                                  updateItem(index, 'dosage', val + 'mg');
+                              }
+                          }}
+                       />
+                    </div>
+                    <div className="col-span-1">
+                       <p className="text-xs font-semibold mb-1 text-gray-700">Qty</p>
+                       <Input 
+                          placeholder="10" 
+                          type="number"
+                          min="1"
+                          className="bg-white"
+                          value={(item as any).tabletCount || ''} 
+                          onChange={e => updateItem(index, 'tabletCount', e.target.value)} 
+                       />
+                    </div>
+                    <div className="col-span-1">
+                       <p className="text-xs font-semibold mb-1 text-gray-700">Days</p>
+                       <Input 
+                          placeholder="5" 
+                          type="number"
+                          min="1"
+                          className="bg-white"
+                          value={item.duration} 
+                          onChange={e => updateItem(index, 'duration', e.target.value)} 
+                       />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 w-full mt-1">
+                      <div className="w-full">
+                         <p className="text-xs font-semibold mb-1 text-gray-700">Timing</p>
                          <Select value={(item as any).timing} onValueChange={val => updateItem(index, 'timing', val)}>
-                            <SelectTrigger className="h-10 w-full">
+                            <SelectTrigger className="h-10 w-full bg-white">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -160,11 +175,11 @@ export function PrescriptionForm({ activeAppointment }: PrescriptionFormProps) {
                             </SelectContent>
                          </Select>
                       </div>
-                      <div className="w-full md:w-2/3">
-                         <p className="text-xs mb-1">Extra Instructions (Optional)</p>
+                      <div className="w-full">
+                         <p className="text-xs font-semibold mb-1 text-gray-700">Extra Instructions (Optional)</p>
                          <Input 
                             placeholder="e.g. Take with warm water" 
-                            className="w-full"
+                            className="w-full bg-white"
                             value={(item as any).instructions || ''} 
                             onChange={e => updateItem(index, 'instructions', e.target.value)} 
                          />

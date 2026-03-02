@@ -6,8 +6,10 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Search, Scan, QrCode, AlertTriangle } from 'lucide-react';
-import { getPrescriptionQueue, getInventory, getAlerts } from '../../api/pharmacistApi';
+import { getPrescriptionQueue, getInventory, getAlerts, updatePrescriptionStatus } from '../../api/pharmacistApi';
 import { PharmacyPOS } from './PharmacyPOS';
+import { PrescriptionReceipt } from './PrescriptionReceipt';
+import { PrescriptionDetailsModal } from './PrescriptionDetailsModal';
 
 
 
@@ -25,6 +27,30 @@ export function PharmacistPortal() {
   const [prescriptionQueue, setPrescriptionQueue] = useState<any[]>([]);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<{ lowStock: any[], expiring: any[] }>({ lowStock: [], expiring: [] });
+
+  const [prescriptionSearch, setPrescriptionSearch] = useState('');
+  const [prescriptionFilter, setPrescriptionFilter] = useState('all');
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Modal tracking state for the printable receipt
+  const [printingPrescription, setPrintingPrescription] = useState<any | null>(null);
+  
+  // Modal tracking state for the detailed view (Acceptance manual verification)
+  const [viewingPrescription, setViewingPrescription] = useState<any | null>(null);
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+      setIsUpdating(true);
+      try {
+          await updatePrescriptionStatus(id, status);
+          const queue = await getPrescriptionQueue();
+          setPrescriptionQueue(queue);
+      } catch (error) {
+          console.error("Failed to update status", error);
+          alert("Failed to update prescription status.");
+      } finally {
+          setIsUpdating(false);
+      }
+  };
 
 
   useEffect(() => {
@@ -47,16 +73,27 @@ export function PharmacistPortal() {
 
   const prescriptionRequests = prescriptionQueue.map((p: any) => ({
       id: p.prescriptionId,
-      patient: p.user ? `${p.user.firstName} ${p.user.lastName}` : 'Unknown',
-      doctor: p.appointment?.doctor?.user ? `Dr. ${p.appointment.doctor.user.firstName}` : 'Unknown',
+      patient: p.user ? `${p.user.firstName} ${p.user.lastName}` : 'Walk-in Request',
+      doctor: p.appointment?.doctor?.user ? `Dr. ${p.appointment.doctor.user.firstName} ${p.appointment.doctor.user.lastName}` : 'Walk-in Request',
       medication: p.prescriptionItems.map((i: any) => i.medicineName || i.medicine?.name).join(', '),
-      quantity: p.prescriptionItems.length > 0 ? p.prescriptionItems[0].dosage : 'N/A', 
+      rawItems: p.prescriptionItems.map((i: any) => ({
+          ...i,
+          quantity: i.quantity,
+          durationText: i.durationText
+      })),
+      dosage: p.prescriptionItems.map((i: any) => i.dosage).filter(Boolean).join(', ') || 'N/A', 
+      instructions: p.prescriptionItems.map((i: any) => i.instructions).filter(Boolean).join(' | ') || p.notes || 'No instructions provided',
       status: p.status.toLowerCase(),
       qrCode: p.prescriptionId.substring(0, 8).toUpperCase(),
       submittedAt: new Date(p.issuedAt).toLocaleString()
   }));
 
-
+  const filteredPrescriptions = prescriptionRequests.filter((p: any) => {
+      const matchesSearch = p.patient.toLowerCase().includes(prescriptionSearch.toLowerCase()) || 
+                            p.qrCode.toLowerCase().includes(prescriptionSearch.toLowerCase());
+      const matchesFilter = prescriptionFilter === 'all' || p.status === prescriptionFilter;
+      return matchesSearch && matchesFilter;
+  });
 
       
       // Derive ready for pickup from queue
@@ -101,15 +138,41 @@ export function PharmacistPortal() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Prescription Requests</CardTitle>
-                <CardDescription>Scan QR codes to verify and process prescriptions</CardDescription>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <CardTitle>Prescription Requests</CardTitle>
+                    <CardDescription>Scan QR codes to verify and process prescriptions</CardDescription>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                    <div className="relative w-full sm:w-64">
+                      <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Input 
+                        placeholder="Search patient or QR..." 
+                        className="pl-9"
+                        value={prescriptionSearch}
+                        onChange={(e) => setPrescriptionSearch(e.target.value)}
+                      />
+                    </div>
+                    <select 
+                      className="border rounded-md px-3 py-2 text-sm bg-white"
+                      value={prescriptionFilter}
+                      onChange={(e) => setPrescriptionFilter(e.target.value)}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="verified">Verified</option>
+                      <option value="ready">Ready</option>
+                      <option value="dispensed">Dispensed</option>
+                    </select>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {prescriptionRequests.map((prescription: any) => (
-                    <div key={prescription.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col items-center">
+                  {filteredPrescriptions.map((prescription: any) => (
+                    <div key={prescription.id} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex flex-col items-center mt-1">
                           <QrCode className="h-8 w-8 text-blue-500 mb-1" />
                           <span className="text-xs text-gray-500">{prescription.qrCode}</span>
                         </div>
@@ -121,36 +184,59 @@ export function PharmacistPortal() {
                               prescription.status === 'verified' ? 'default' :
                               prescription.status === 'ready' ? 'secondary' : 'outline'
                             }>
-                              {prescription.status}
+                              {prescription.status.toUpperCase()}
                             </Badge>
                           </div>
                           <p className="font-medium text-blue-600">{prescription.medication}</p>
-                          <p className="text-sm text-gray-600">Qty: {prescription.quantity} • Dr: {prescription.doctor}</p>
-                          <p className="text-sm text-gray-500">Submitted: {prescription.submittedAt}</p>
+                          <div className="text-sm text-gray-600 flex flex-wrap gap-x-4">
+                             <span><b>Dosage:</b> {prescription.dosage}</span>
+                             <span><b>Dr:</b> {prescription.doctor}</span>
+                          </div>
+                          <p className="text-sm text-gray-700 italic mt-1 bg-yellow-50 p-2 rounded border border-yellow-100">Instructions: {prescription.instructions}</p>
+                          <p className="text-xs text-gray-500 mt-2">Submitted: {prescription.submittedAt}</p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2 md:mt-0 mt-2">
                         {prescription.status === 'pending' && (
                           <>
-                            <Button variant="outline" size="sm">Verify QR</Button>
-                            <Button size="sm">Accept</Button>
+                            <Button size="sm" onClick={() => setViewingPrescription(prescription)} disabled={isUpdating}>Accept</Button>
                           </>
                         )}
                         {prescription.status === 'verified' && (
-                          <Button size="sm">Mark Ready</Button>
+                          <Button size="sm" onClick={() => handleUpdateStatus(prescription.id, 'READY')} disabled={isUpdating}>Mark Ready</Button>
                         )}
                         {prescription.status === 'ready' && (
-                          <Button size="sm">Dispense</Button>
+                          <Button size="sm" onClick={() => handleUpdateStatus(prescription.id, 'DISPENSED')} disabled={isUpdating}>Dispense</Button>
                         )}
                         {prescription.status === 'dispensed' && (
-                          <Button variant="outline" size="sm">Generate Receipt</Button>
+                          <Button variant="outline" size="sm" onClick={() => setPrintingPrescription(prescription)}>Generate Receipt</Button>
+                        )}
+                        {prescription.status === 'rejected' && (
+                          <Badge variant="destructive">Rejected</Badge>
                         )}
                       </div>
                     </div>
                   ))}
+                  {filteredPrescriptions.length === 0 && (
+                      <p className="text-center text-gray-500 py-4">No prescriptions found matching your criteria.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
+
+            <PrescriptionReceipt 
+                prescription={printingPrescription}
+                isOpen={!!printingPrescription}
+                onClose={() => setPrintingPrescription(null)}
+            />
+
+            <PrescriptionDetailsModal
+                prescription={viewingPrescription}
+                isOpen={!!viewingPrescription}
+                onClose={() => setViewingPrescription(null)}
+                onAccept={handleUpdateStatus}
+                isUpdating={isUpdating}
+            />
           </TabsContent>
 
           {/* Inventory Tab */}

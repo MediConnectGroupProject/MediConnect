@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Clock, StopCircle, User } from 'lucide-react';
+import { Clock, StopCircle, User, RotateCcw } from 'lucide-react';
 import { updateAppointmentStatus } from '../../api/doctorApi';
 import type { Appointment } from '../../types';
 import toast from 'react-hot-toast';
@@ -39,8 +39,13 @@ export function ActiveConsultationCard({ appointment, onConsultationComplete }: 
     }, [appointment.id]);
 
     const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
+        const hours = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
+        
+        if (hours > 0) {
+            return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
@@ -51,6 +56,18 @@ export function ActiveConsultationCard({ appointment, onConsultationComplete }: 
             onConsultationComplete();
         } catch {
             toast.error('Failed to end consultation');
+        }
+    };
+
+    const handleUndoConsultation = async () => {
+        try {
+            // Remove the start timer to prevent a jump if started again later
+            localStorage.removeItem(`consultation_start_${appointment.id}`);
+            await updateAppointmentStatus(appointment.id, 'PENDING');
+            toast.success('Consultation Reverted to Pending');
+            onConsultationComplete();
+        } catch {
+            toast.error('Failed to undo consultation');
         }
     };
 
@@ -78,14 +95,25 @@ export function ActiveConsultationCard({ appointment, onConsultationComplete }: 
                     </div>
                 </div>
 
-                <Button
-                    size="lg"
-                    variant="destructive"
-                    onClick={handleEndConsultation}
-                >
-                    <StopCircle className="h-5 w-5 mr-2" />
-                    End Consultation
-                </Button>
+                <div className="flex flex-col gap-2">
+                    <Button
+                        size="lg"
+                        variant="destructive"
+                        onClick={handleEndConsultation}
+                    >
+                        <StopCircle className="h-5 w-5 mr-2" />
+                        End Consultation
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                        onClick={handleUndoConsultation}
+                    >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Undo Start
+                    </Button>
+                </div>
 
             </CardContent>
         </Card>
