@@ -302,7 +302,9 @@ model PrescriptionItem {
   medicineId     String?
   medicineName   String? // if medicineId is null
   dosage         String?   @db.VarChar(100)
-  duration       DateTime?
+  quantity       Int?      // e.g. 50 (tablets)
+  duration       DateTime? 
+  durationText   String?   @db.VarChar(50) // e.g. "5 days" or "5"
   instructions   String?   @db.Text
 
   prescription Prescription @relation(fields: [prescriptionId], references: [prescriptionId], onDelete: Cascade)

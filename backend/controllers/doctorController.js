@@ -229,11 +229,9 @@ export const createPrescription = async (req, res) => {
                     create: items.map((item) => ({
                         medicineName: item.name,
                         dosage: item.dosage,
-                        duration: item.duration ? new Date(Date.now() + parseInt(item.duration) * 24 * 60 * 60 * 1000) : null, // Simplistic duration handling or store as string if schema allows. Schema says DateTime? for duration. 
-                        // Wait, schema says `duration DateTime?`. That usually means "Until when". 
-                        // If frontend sends "5 days", I should calculate end date or change schema to string.
-                        // Let's assume for now I store it as null or calculate if possible.
-                        // Actually, let's store instruction text in notes or instructions field.
+                        quantity: item.tabletCount ? parseInt(item.tabletCount) : null,
+                        durationText: item.duration || null,
+                        duration: item.duration ? new Date(Date.now() + parseInt(item.duration) * 24 * 60 * 60 * 1000) : null, 
                         instructions: `${item.frequency} - ${item.timing}. ${item.instructions || ''}`
                     }))
                 }
