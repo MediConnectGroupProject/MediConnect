@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -83,7 +83,7 @@ export function PharmacyPOS() {
                 const isRobustSearch = searchQuery.length > 0;
                 const data = await getInventory(1, 1000, searchQuery, !isRobustSearch);
                 setInventory(Array.isArray(data) ? data : data.data || []);
-             } catch(e) {
+             } catch {
                  toast.error("Failed to load inventory");
              } finally {
                  setLoading(false);

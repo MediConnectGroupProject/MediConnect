@@ -49,7 +49,7 @@ export function ActiveConsultationCard({ appointment, onConsultationComplete }: 
             await updateAppointmentStatus(appointment.id, 'COMPLETED');
             toast.success('Consultation Completed');
             onConsultationComplete();
-        } catch (e) {
+        } catch {
             toast.error('Failed to end consultation');
         }
     };

@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Badge } from '../../components/ui/badge';
-import { Loader2, Plus, X, User, Briefcase, Mail, Phone, Building } from 'lucide-react';
+import { Loader2, Plus, X, Briefcase, Mail, Phone, Building } from 'lucide-react';
 
 export default function DoctorProfile() {
     // const { user } = useAuth();

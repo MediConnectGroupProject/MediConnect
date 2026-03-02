@@ -3,7 +3,7 @@ import { getInventory } from "../api/pharmacistApi";
 
 
 // all inventories
-export const inventories = (page: number, limit: number, search: string) => {
+export const useInventories = (page: number, limit: number, search: string) => {
     
     return useQuery({
         queryKey: ['inventories' , page , limit , search],

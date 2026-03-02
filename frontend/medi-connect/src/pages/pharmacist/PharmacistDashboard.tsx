@@ -39,8 +39,7 @@ export default function PharmacistDashboard() {
     loadStats();
   }, []);
 
-  // Calculate max value for chart scaling
-  const maxSales = Math.max(...(stats.salesTrend?.map((d:any) => Number(d.amount)) || [0]), 100);
+
 
   return (
     <div className="space-y-6 pt-2 pb-8">

@@ -109,13 +109,13 @@ export default function DoctorPortal() {
                     });
                     setWorkingHours(initial);
                 }
-            } catch(e) { console.error("Failed to fetch availability"); } 
+            } catch { console.error("Failed to fetch availability"); } 
 
             // Fetch Patients
             try {
                 const patients = await api.getPatients();
                 setPatientsList(patients);
-            } catch (e) { console.error("Failed to fetch patients"); }
+            } catch { console.error("Failed to fetch patients"); }
 
         } catch (error) {
             console.error("Failed to fetch portal data", error);
@@ -144,7 +144,7 @@ export default function DoctorPortal() {
           await api.deletePrescription(id);
           toast.success("Deleted successfully", { id: toastId });
           loadPortalData();
-      } catch (e) {
+      } catch {
           toast.error("Failed to delete", { id: toastId });
       }
   };
@@ -572,7 +572,7 @@ export default function DoctorPortal() {
                                                 await api.updateAppointmentStatus(appointment.id, 'PENDING');
                                                 toast.success('Status reset', { id: toastId });
                                                 loadPortalData();
-                                            } catch (e) {
+                                            } catch {
                                                 toast.error('Failed to reset status', { id: toastId });
                                             }
                                         }}
@@ -588,7 +588,7 @@ export default function DoctorPortal() {
                                                 await api.updateAppointmentStatus(appointment.id, 'COMPLETED');
                                                 toast.success('Consultation completed', { id: toastId });
                                                 loadPortalData();
-                                            } catch (e) {
+                                            } catch {
                                                 toast.error('Failed to complete', { id: toastId });
                                             }
                                         }}

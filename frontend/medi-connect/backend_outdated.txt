@@ -1,0 +1,10 @@
+Package          Current  Wanted  Latest  Location                      Depended by
+@faker-js/faker   10.2.0  10.3.0  10.3.0  node_modules/@faker-js/faker  backend
+@prisma/client    5.22.0  5.22.0   7.4.2  node_modules/@prisma/client   backend
+cors               2.8.5   2.8.6   2.8.6  node_modules/cors             backend
+dotenv            17.2.3  17.3.1  17.3.1  node_modules/dotenv           backend
+nodemailer        7.0.12  7.0.13   8.0.1  node_modules/nodemailer       backend
+nodemon           3.1.11  3.1.14  3.1.14  node_modules/nodemon          backend
+pg                8.16.3  8.19.0  8.19.0  node_modules/pg               backend
+prisma            5.22.0  5.22.0   7.4.2  node_modules/prisma           backend
+zod                4.3.5   4.3.6   4.3.6  node_modules/zod              backend

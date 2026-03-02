@@ -29,7 +29,7 @@ export const useAdminStats = () => {
 }
 
 // get user count
-export const userCount = () => {
+export const useUserCount = () => {
 
     return useQuery({
         queryKey: ['userCount'],
@@ -41,7 +41,7 @@ export const userCount = () => {
 }
 
 // get all users
-export const allUsers = (page: number, limit: number, search: string, type?: 'internal' | 'external') => {
+export const useAllUsers = (page: number, limit: number, search: string, type?: 'internal' | 'external') => {
 
     return useQuery({
         queryKey: ['users', page, limit, search, type],
@@ -54,7 +54,7 @@ export const allUsers = (page: number, limit: number, search: string, type?: 'in
 }
 
 // get all roles
-export const allRoles = () => {
+export const useAllRoles = () => {
 
     return useQuery({
         queryKey: ['roles'],
@@ -66,7 +66,7 @@ export const allRoles = () => {
 }
 
 // update role status
-export const updateRoleMutation = () => {
+export const useUpdateRoleMutation = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
@@ -128,7 +128,7 @@ export const updateRoleMutation = () => {
 }
 
 // add role
-export const addRoleMutation = () => {
+export const useAddRoleMutation = () => {
 
     const queryClient = useQueryClient();
 
@@ -153,7 +153,7 @@ export const addRoleMutation = () => {
 }
 
 // update user state
-export const updateUserStateMutation = () => {
+export const useUpdateUserStateMutation = () => {
 
     const queryClient = useQueryClient();
 

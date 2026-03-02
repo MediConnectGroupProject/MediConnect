@@ -47,7 +47,7 @@ export default function PrescriptionSlip() {
                  if (!res.ok) throw new Error("Prescription not found");
                  const json = await res.json();
                  setData(json);
-             } catch (err) {
+             } catch {
                  setError("Invalid or Expired Prescription");
              } finally {
                  setLoading(false);

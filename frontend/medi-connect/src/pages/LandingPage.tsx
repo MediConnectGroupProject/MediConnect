@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Heart, Shield, Clock, Phone, Mail, MapPin } from 'lucide-react';
+import { Heart, Shield, Clock, Phone, Mail, MapPin } from 'lucide-react';
 import logo from '../assets/logo-mediconnect.png';
 import { useSystemSettings } from '../context/SystemSettingsContext';
 

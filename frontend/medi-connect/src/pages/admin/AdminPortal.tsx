@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Search, Trash2, Download, ShieldAlert, Activity, Database, Server, Users, FileText } from 'lucide-react';
-import { addRoleMutation, allRoles, allUsers, updateRoleMutation, updateUserStateMutation, useCreateUser, useDeleteUser, useRemoveRole } from '../../hooks/adminUsersHook';
+import { useAddRoleMutation, useAllRoles, useAllUsers, useUpdateRoleMutation, useUpdateUserStateMutation, useCreateUser, useDeleteUser, useRemoveRole } from '../../hooks/adminUsersHook';
 import { revokeStaffSessions } from '../../api/adminUsersApi';
 import { PaginationLay } from '../layouts/PaginationLay';
 import toast from 'react-hot-toast';
@@ -60,9 +60,9 @@ export function AdminPortal() {
   const [selectedUser, setSelectedUser] = useState<ComponentUser | null>(null);
   const [roleActions, setRoleActions] = useState<Record<number, string>>({});
   const [selectedUserState, setSelectedUserState] = useState('');
-  const _updateRoleMutation = updateRoleMutation()
-  const _addRoleMutation = addRoleMutation()
-  const _updateUserStateMutation = updateUserStateMutation()
+  const _updateRoleMutation = useUpdateRoleMutation()
+  const _addRoleMutation = useAddRoleMutation()
+  const _updateUserStateMutation = useUpdateUserStateMutation()
   const _createUserMutation = useCreateUser();
   const _deleteUserMutation = useDeleteUser();
   const _removeRoleMutation = useRemoveRole();
@@ -186,10 +186,10 @@ export function AdminPortal() {
 
 
   // data fetching
-  const { data: internalUsers, isLoading: isInternalLoading, isError: isInternalError, error: internalError } = allUsers(pageInternal, limitInternal, debouncedSearch, 'internal');
-  const { data: externalUsers, isLoading: isExternalLoading, isError: isExternalError, error: externalError } = allUsers(pageExternal, limitExternal, debouncedSearch, 'external');
+  const { data: internalUsers, isLoading: isInternalLoading, isError: isInternalError, error: internalError } = useAllUsers(pageInternal, limitInternal, debouncedSearch, 'internal');
+  const { data: externalUsers, isLoading: isExternalLoading, isError: isExternalError, error: externalError } = useAllUsers(pageExternal, limitExternal, debouncedSearch, 'external');
   
-  const { data: roles, isLoading: isRolesLoading, error: errorRoles, isError: isErrorRoles } = allRoles();
+  const { data: roles, isLoading: isRolesLoading, error: errorRoles, isError: isErrorRoles } = useAllRoles();
   const roleOptions = roles?.data?.map((r: { name: string }) => ({
     value: r.name,
   })) ?? [];
@@ -563,7 +563,7 @@ export function AdminPortal() {
                       } else {
                           toast.error("Failed to save settings");
                       }
-                  } catch(e) {
+                  } catch {
                       toast.error("Error saving settings");
                   }
               }}>Save Changes</Button>
@@ -715,7 +715,7 @@ export function AdminPortal() {
                                     body: JSON.stringify(newSettings)
                                 });
                                 toast.success("Security policy updated");
-                           } catch(e) { toast.error("Failed to update policy"); }
+                           } catch { toast.error("Failed to update policy"); }
                         }}
                     />
                  </div>
@@ -806,7 +806,7 @@ export function AdminPortal() {
                                     toast.success(res.message);
                                     setIsOpenRevokeDialog(false);
                                     setRefreshKey(prev => prev + 1); // Refresh Active Staff Card
-                                } catch(e) {
+                                } catch {
                                     toast.error("Failed to revoke sessions");
                                 } finally {
                                     setIsRevoking(false);

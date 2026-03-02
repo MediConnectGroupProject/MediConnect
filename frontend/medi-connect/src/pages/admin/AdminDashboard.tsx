@@ -39,7 +39,7 @@ export default function AdminDashboard() {
           const data = await getSystemHealth();
           setHealthData(data);
           if (toastId) toast.success("Health check complete", { id: toastId });
-      } catch (e) {
+      } catch {
           if (toastId) toast.error("Health check failed", { id: toastId });
       }
   };

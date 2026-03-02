@@ -88,7 +88,9 @@ export const getPatient = async (patientId: string) => {
             const data = await res.json();
             if (data.message) errorInfo = data.message;
             if (data.stack) console.error("Backend Stack:", data.stack);
-        } catch (e) {}
+        } catch {
+            /* ignore */
+        }
         throw new Error(errorInfo);
     }
     return res.json();

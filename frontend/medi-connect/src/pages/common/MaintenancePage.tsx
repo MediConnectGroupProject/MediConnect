@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Settings, Clock, Mail } from 'lucide-react';
 import { useSystemSettings } from '../../context/SystemSettingsContext';
 

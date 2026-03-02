@@ -16,7 +16,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
   
   if (settings.maintenanceMode) {
       // If user is logged in as ADMIN, let them pass
-      if (user && user.roles.some((r: { name: string }) => r.name === 'ADMIN')) {
+      if (user && user.roles.some((r: any) => r === 'ADMIN' || r?.name === 'ADMIN')) {
           return <>{children}</>;
       }
       
