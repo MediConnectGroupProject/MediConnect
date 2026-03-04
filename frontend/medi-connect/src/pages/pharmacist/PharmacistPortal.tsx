@@ -13,6 +13,7 @@ import { PrescriptionDetailsModal } from './PrescriptionDetailsModal';
 import { InventoryTable } from './InventoryTable';
 import { MedicineFormModal } from './MedicineFormModal';
 import { ReceiveStockModal } from './ReceiveStockModal';
+import toast from 'react-hot-toast';
 
 export function PharmacistPortal() {
   const [searchParams] = useSearchParams();
@@ -82,6 +83,28 @@ export function PharmacistPortal() {
       }
   };
 
+  const handleDispenseWithUndo = async (pickupId: string) => {
+      // Optimistically push status update
+      await handleUpdateStatus(pickupId, 'DISPENSED');
+      
+      toast((t) => (
+          <div className="flex items-center gap-4">
+              <span>Prescription marked as Picked Up.</span>
+              <Button 
+                 size="sm" 
+                 variant="outline" 
+                 onClick={async () => {
+                     toast.dismiss(t.id);
+                     await handleUpdateStatus(pickupId, 'READY');
+                     toast.success("Action undone. Prescription returned to pickup queue.");
+                 }}
+              >
+                 Undo
+              </Button>
+          </div>
+      ), { duration: 7000 });
+  };
+
 
   useEffect(() => {
     const fetchPharmacistData = async () => {
@@ -134,11 +157,10 @@ export function PharmacistPortal() {
       // Derive ready for pickup from queue
       const readyForPickup = prescriptionQueue.filter((p:any) => p.status === 'READY' || p.status === 'ready').map((p:any) => ({
           id: p.prescriptionId,
-          patient: p.user ? `${p.user.firstName} ${p.user.lastName}` : 'Unknown',
+          patient: p.user ? `${p.user.firstName} ${p.user.lastName}` : 'Walk-in Request',
           medication: p.prescriptionItems.map((i: any) => i.medicineName || i.medicine?.name).join(', '),
-          preparedAt: new Date(p.updatedAt).toLocaleString(), // Use last update time
-          notified: false, // Notification status not yet in DB
-          amount: '$0.00' // Price logic not yet implemented
+          preparedAt: p.updatedAt ? new Date(p.updatedAt).toLocaleString() : 'N/A', // Use last update time securely
+          amount: 'Pending' // Price logic not yet implemented
       }));
 
     // Sales data requires a new endpoint (Sales/Invoices). Setting to empty for now.
@@ -409,34 +431,30 @@ export function PharmacistPortal() {
           <TabsContent value="pickup" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Ready for Pickup</h2>
-              <Button>Send Notifications</Button>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle>Customer Notifications</CardTitle>
-                <CardDescription>Prescriptions ready for customer pickup</CardDescription>
+                <CardTitle>Customer Pickup Queue</CardTitle>
+                <CardDescription>Prescriptions that have been verified, filled, and are ready for handover</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {readyForPickup.map((pickup: any) => (
-                    <div key={pickup.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {readyForPickup.length === 0 ? <p className="text-gray-500 text-sm">No prescriptions currently waiting for pickup.</p> : 
+                  readyForPickup.map((pickup: any) => (
+                    <div key={pickup.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium">{pickup.patient}</h3>
-                          <Badge variant={pickup.notified ? 'secondary' : 'destructive'}>
-                            {pickup.notified ? 'Notified' : 'Pending'}
-                          </Badge>
+                          <h3 className="font-medium text-lg">{pickup.patient}</h3>
+                          <Badge variant="secondary">Ready</Badge>
                         </div>
                         <p className="font-medium text-blue-600">{pickup.medication}</p>
-                        <p className="text-sm text-gray-600">Amount: {pickup.amount}</p>
                         <p className="text-sm text-gray-500">Prepared: {pickup.preparedAt}</p>
                       </div>
                       <div className="flex gap-2">
-                        {!pickup.notified && (
-                          <Button variant="outline" size="sm">Send SMS</Button>
-                        )}
-                        <Button size="sm">Mark as Picked Up</Button>
+                        <Button size="sm" onClick={() => handleDispenseWithUndo(pickup.id)} disabled={isUpdating}>
+                            Mark as Picked Up
+                        </Button>
                       </div>
                     </div>
                   ))}
