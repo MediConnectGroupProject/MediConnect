@@ -9,7 +9,12 @@ import {
     getAdminDashboardStats,
     createUser,
     deleteUser,
-    removeRole
+    removeRole,
+    // Supplier Imports
+    getAllSuppliers,
+    addSupplier,
+    updateSupplier,
+    updateSupplierStatus
 } from "../api/adminUsersApi";
 import {
     useMutation,
@@ -227,3 +232,60 @@ export const useRemoveRole = () => {
         }
     });
 }
+
+// ==== SUPPLY CHAIN HOOKS ====
+
+export const useAllSuppliers = () => {
+    return useQuery({
+        queryKey: ['suppliers'],
+        queryFn: getAllSuppliers,
+        staleTime: 1000 * 60 * 5, // 5 mins
+        retry: 1,
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useAddSupplier = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (supplierData: any) => addSupplier(supplierData),
+        onSuccess: (data) => {
+            toast.success(data?.message || "Supplier added successfully");
+            queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to add supplier");
+        }
+    });
+};
+
+export const useUpdateSupplier = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, updateData }: { id: string, updateData: any }) => updateSupplier(id, updateData),
+        onSuccess: (data) => {
+            toast.success(data?.message || "Supplier updated successfully");
+            queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to update supplier");
+        }
+    });
+};
+
+export const useUpdateSupplierStatus = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, isActive }: { id: string, isActive: boolean }) => updateSupplierStatus(id, isActive),
+        onSuccess: (data) => {
+            toast.success(data?.message || "Supplier status changed");
+            queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to update supplier status");
+        }
+    });
+};

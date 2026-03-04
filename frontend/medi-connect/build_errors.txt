@@ -1,6 +1,0 @@
-src/guards/MaintenanceGuard.tsx(19,35): error TS2345: Argument of type '(r: { name: string; }) => boolean' is not assignable to parameter of type '(value: Role, index: number, array: Role[]) => unknown'.
-  Types of parameters 'r' and 'value' are incompatible.
-    Type 'string' is not assignable to type '{ name: string; }'.
-      Type 'string' is not assignable to type '{ name: string; }'.
-src/pages/common/MaintenancePage.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
-src/pages/pharmacist/InventoryView.tsx(15,31): error TS2554: Expected 3-4 arguments, but got 0.

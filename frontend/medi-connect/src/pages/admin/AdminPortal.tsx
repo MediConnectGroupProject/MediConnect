@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from '../../components/ui/separator';
 import { Switch } from '../../components/ui/switch';
 import { Settings } from 'lucide-react';
+import { SupplierTab } from './SupplierTab';
 
 interface ComponentUser {
   id: string;
@@ -206,9 +207,10 @@ export function AdminPortal() {
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="approvals">Add User</TabsTrigger>
+            <TabsTrigger value="supply-chain">Supply Chain</TabsTrigger>
             <TabsTrigger value="settings">System Settings</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -690,6 +692,11 @@ export function AdminPortal() {
                 </div>
 
             </div>
+          </TabsContent>
+
+          {/* Supply Chain Tab */}
+          <TabsContent value="supply-chain" className="space-y-6">
+             <SupplierTab />
           </TabsContent>
 
           {/* Security Tab */}

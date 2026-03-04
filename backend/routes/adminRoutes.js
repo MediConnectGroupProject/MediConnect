@@ -29,6 +29,12 @@ import {
     revokeStaffSessions,
     getActiveStaff
 } from '../controllers/adminController.js';
+import {
+    getAllSuppliers,
+    addSupplier,
+    updateSupplier,
+    updateSupplierStatus
+} from '../controllers/supplierController.js';
 
 // user related routes
 router.post('/users', protect, requireRole(['ADMIN']), asyncHandler(createUser));
@@ -51,5 +57,11 @@ router.delete('/roles/user/:userId/role/:roleId', protect, requireRole(['ADMIN']
 router.post('/users/:userId', protect, requireRole(['ADMIN']), asyncHandler(addRole));
 router.patch('/users/:userId', protect, requireRole(['ADMIN']), asyncHandler(changeUserStatus));
 router.delete('/users/:userId', protect, requireRole(['ADMIN']), asyncHandler(deleteUser));
+
+// Supply Chain Routes
+router.get('/suppliers', protect, requireRole(['ADMIN']), asyncHandler(getAllSuppliers));
+router.post('/suppliers', protect, requireRole(['ADMIN']), asyncHandler(addSupplier));
+router.patch('/suppliers/:id', protect, requireRole(['ADMIN']), asyncHandler(updateSupplier));
+router.patch('/suppliers/:id/status', protect, requireRole(['ADMIN']), asyncHandler(updateSupplierStatus));
 
 export default router;

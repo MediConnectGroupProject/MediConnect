@@ -326,3 +326,52 @@ export const getActiveStaff = async () => {
 
     return data;
 }
+
+// ---- SUPPLY CHAIN API CALLS ----
+
+export const getAllSuppliers = async () => {
+    const res = await fetch(`${API_URL}/suppliers`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include"
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to fetch suppliers");
+    return data;
+};
+
+export const addSupplier = async (supplierData: any) => {
+    const res = await fetch(`${API_URL}/suppliers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(supplierData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to add supplier");
+    return data;
+};
+
+export const updateSupplier = async (id: string, updateData: any) => {
+    const res = await fetch(`${API_URL}/suppliers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(updateData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to update supplier");
+    return data;
+};
+
+export const updateSupplierStatus = async (id: string, isActive: boolean) => {
+    const res = await fetch(`${API_URL}/suppliers/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ isActive })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to update supplier status");
+    return data;
+};

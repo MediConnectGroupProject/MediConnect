@@ -170,17 +170,21 @@ model Medicine {
 }
 
 model Supplier {
-  id          String   @id @default(uuid())
-  name        String
+  id            String   @id @default(uuid())
+  name          String
   contactPerson String?
-  email       String?
-  phone       String?
-  address     String?
-  
+  email         String?
+  phone         String?
+  address       String?
+  isActive      Boolean  @default(true)
+  licenseNumber String?
+  rating        Int?     // 1 to 5 star rating
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
   batches     Batch[]
   medicines   Medicine[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model Batch {

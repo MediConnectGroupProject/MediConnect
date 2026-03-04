@@ -18,6 +18,7 @@ export const addSupplier = async (req, res) => {
 export const getSuppliers = async (req, res) => {
     try {
         const suppliers = await prisma.supplier.findMany({ 
+            where: { isActive: true },
             orderBy: { name: 'asc' } 
         });
         res.status(200).json(suppliers);
