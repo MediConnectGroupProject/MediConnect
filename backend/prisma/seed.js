@@ -147,7 +147,7 @@ async function main() {
   const tabletDosage = await prisma.dosageForms.findUnique({ where: { name: 'Tablet' } });
   const syrupDosage = await prisma.dosageForms.findUnique({ where: { name: 'Syrup' } });
 
-  const categories = ['Antibiotics', 'Analgesics', 'Cardiovascular', 'Supplements', 'Cough & Cold'];
+  const categories = ['Antibiotics', 'Analgesics', 'Cardiovascular', 'Supplements', 'Cough & Cold', 'Cosmetics', 'Medical Devices', 'Baby Care', 'Personal Care', 'First Aid', 'Surgical Supplies'];
   for (const cat of categories) {
     await prisma.medicineCategory.upsert({
         where: { name: cat },

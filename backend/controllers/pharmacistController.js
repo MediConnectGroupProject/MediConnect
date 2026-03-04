@@ -280,48 +280,85 @@ export const getCategory = async (req, res) => {
 }
 
 // add medicine
-export const addMedicine = async (req, res) => {
+export const addMedicine = async (req, res, next) => {
+    try {
+        const { 
+            name, description, price, categoryId, dosageId,
+            supplierId, batchNumber, quantity, costPrice, manufacturedDate, expiryDate
+        } = req.body;
 
-    const { name, description, price, categoryId, dosageId } = req.body;
+        // validate availability of req data
+        const isCategoryAvailable = await prisma.medicineCategory.findUnique({
+            where: {
+                categoryId
+            }
+        });
 
-    // validate availability of req data
-    const isCategoryAvailable = await prisma.medicineCategory.findUnique({
-        where: {
-            categoryId
+        if (!isCategoryAvailable) {
+            return res.status(404).json({ message: 'Category not found' });
         }
-    });
 
-    if (!isCategoryAvailable) {
+        const isDosageAvailable = await prisma.dosageForms.findUnique({
+            where: {
+                dosageId
+            }
+        });
 
-        return res.status(404).json({ message: 'Category not found' });
+        if (!isDosageAvailable) {
+            return res.status(404).json({ message: 'Dosage not found' });
+        }
+
+        const hasInitialStock = batchNumber && quantity && expiryDate;
+
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create Medicine
+            const medicine = await tx.medicine.create({
+                data: {
+                    name,
+                    description,
+                    price,
+                    categoryId,
+                    dosageId,
+                    stock: hasInitialStock ? quantity : 0
+                }
+            });
+
+            if (hasInitialStock) {
+                // 2. Create Batch
+                const batch = await tx.batch.create({
+                    data: {
+                        batchNumber,
+                        medicineId: medicine.medicineId,
+                        supplierId: supplierId || null,
+                        quantity: quantity,
+                        originalQuantity: quantity,
+                        expiryDate: new Date(expiryDate),
+                        manufactureDate: manufacturedDate ? new Date(manufacturedDate) : null,
+                        unitCost: costPrice || 0
+                    }
+                });
+
+                // 3. Create Inventory Log
+                await tx.inventoryLogs.create({
+                    data: {
+                        medicineId: medicine.medicineId,
+                        quantity: quantity,
+                        changeType: 'STOCK_IN',
+                        expiryDate: new Date(expiryDate)
+                    }
+                });
+            }
+
+            return medicine;
+        });
+
+        res.status(201).json({
+            message: 'Medicine added successfully',
+            medicine: result
+        });
+    } catch (error) {
+        next(error);
     }
-
-    const isDosageAvailable = await prisma.dosageForms.findUnique({
-        where: {
-            dosageId
-        }
-    });
-
-    if (!isDosageAvailable) {
-
-        return res.status(404).json({ message: 'Dosage not found' });
-    }
-
-    // insert data
-    const medicine = await prisma.medicine.create({
-        data: {
-            name,
-            description,
-            price,
-            categoryId,
-            dosageId
-        }
-    });
-
-    res.status(201).json({
-        message: 'Medicine added successfully',
-        medicine
-    });
 }
 
 // update medicine

@@ -148,6 +148,12 @@ export const addMedicineSchema = z.object({
             .number()
             .int()
             .min(1, 'Dosage ID is required'),
+        supplierId: z.string().optional(),
+        batchNumber: z.string().optional(),
+        quantity: z.coerce.number().int().positive('Quantity must be positive').optional(),
+        costPrice: z.coerce.number().positive('Cost price must be positive').optional(),
+        manufacturedDate: z.string().datetime().optional().or(z.date().optional()),
+        expiryDate: z.string().datetime().optional().or(z.date().optional())
     }).strict(),
 });
 

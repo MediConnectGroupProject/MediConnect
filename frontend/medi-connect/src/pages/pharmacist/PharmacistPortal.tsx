@@ -10,8 +10,9 @@ import { getPrescriptionQueue, getInventory, getAlerts, updatePrescriptionStatus
 import { PharmacyPOS } from './PharmacyPOS';
 import { PrescriptionReceipt } from './PrescriptionReceipt';
 import { PrescriptionDetailsModal } from './PrescriptionDetailsModal';
-
-
+import { InventoryTable } from './InventoryTable';
+import { MedicineFormModal } from './MedicineFormModal';
+import { ReceiveStockModal } from './ReceiveStockModal';
 
 export function PharmacistPortal() {
   const [searchParams] = useSearchParams();
@@ -34,9 +35,38 @@ export function PharmacistPortal() {
   
   // Modal tracking state for the printable receipt
   const [printingPrescription, setPrintingPrescription] = useState<any | null>(null);
+  const [isRefreshingAlerts, setIsRefreshingAlerts] = useState(false);
   
-  // Modal tracking state for the detailed view (Acceptance manual verification)
   const [viewingPrescription, setViewingPrescription] = useState<any | null>(null);
+
+  // Inventory UI State
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [isMedicineFormOpen, setIsMedicineFormOpen] = useState(false);
+  const [editingMedicine, setEditingMedicine] = useState<any | null>(null);
+  const [isReceiveStockOpen, setIsReceiveStockOpen] = useState(false);
+  const [receivingMedicine, setReceivingMedicine] = useState<any | null>(null);
+
+  const fetchAlertsData = async () => {
+      setIsRefreshingAlerts(true);
+      try {
+          const alertsData = await getAlerts();
+          setAlerts(alertsData);
+      } catch (error) {
+          console.error("Failed to fetch alerts", error);
+      } finally {
+          setIsRefreshingAlerts(false);
+      }
+  };
+
+  const fetchInventoryData = async (searchStr = '') => {
+      try {
+          // getInventory(page, limit, search)
+          const inv = await getInventory(1, 1000, searchStr);
+          setInventoryItems(Array.isArray(inv) ? inv : []);
+      } catch (error) {
+          console.error("Failed to fetch inventory", error);
+      }
+  };
 
   const handleUpdateStatus = async (id: string, status: string) => {
       setIsUpdating(true);
@@ -59,17 +89,22 @@ export function PharmacistPortal() {
             const queue = await getPrescriptionQueue();
             setPrescriptionQueue(queue);
 
-            const inv = await getInventory(1, 100, '');
-            setInventoryItems(inv.data || []); 
-
-            const alertsData = await getAlerts();
-            setAlerts(alertsData);
+            await fetchInventoryData();
+            await fetchAlertsData();
         } catch (error) {
             console.error("Failed to fetch pharmacist data", error);
         }
     }
     fetchPharmacistData();
   }, []);
+
+  // Debounced Search Effect for Inventory
+  useEffect(() => {
+      const delaySearch = setTimeout(() => {
+          fetchInventoryData(inventorySearch);
+      }, 400);
+      return () => clearTimeout(delaySearch);
+  }, [inventorySearch]);
 
   const prescriptionRequests = prescriptionQueue.map((p: any) => ({
       id: p.prescriptionId,
@@ -246,48 +281,66 @@ export function PharmacistPortal() {
               <div className="flex gap-2">
                 <div className="relative">
                   <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <Input placeholder="Search medications..." className="pl-9" />
+                  <Input 
+                      placeholder="Search medications..." 
+                      className="pl-9" 
+                      value={inventorySearch}
+                      onChange={(e) => setInventorySearch(e.target.value)}
+                  />
                 </div>
-                <Button>Add/Edit Medicine</Button>
+                <Button onClick={() => { setEditingMedicine(null); setIsMedicineFormOpen(true); }}>
+                    Add/Edit Medicine
+                </Button>
               </div>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Stock Tracking & Expiry Alerts</CardTitle>
-                <CardDescription>Monitor medication inventory and expiration dates</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {inventoryItems.map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium">{item.name}</h3>
-                          <Badge variant="outline">{item.category}</Badge>
-                          {item.stock < 50 && (
-                            <Badge variant="destructive">Low Stock</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600">Stock: {item.stock} units • Price: ${item.price}</p>
-                        <p className="text-sm text-gray-500">Expires: {new Date(item.expiryDate).toLocaleDateString()}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">Update Stock</Button>
-                        <Button variant="outline" size="sm">Reorder</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <InventoryTable 
+                items={inventoryItems} 
+                onEditMedicine={(med) => { setEditingMedicine(med); setIsMedicineFormOpen(true); }}
+                onReceiveStock={(med) => { setReceivingMedicine(med); setIsReceiveStockOpen(true); }}
+            />
+
+            <MedicineFormModal 
+                isOpen={isMedicineFormOpen}
+                onClose={() => setIsMedicineFormOpen(false)}
+                editingMedicine={editingMedicine}
+                onSuccess={() => {
+                    const reload = async() => {
+                        try {
+                           const res = await getInventory(1, 1000, inventorySearch);
+                           setInventoryItems(Array.isArray(res) ? res : []);
+                        } catch(e){}
+                    };
+                    reload();
+                }}
+            />
+
+            <ReceiveStockModal 
+                isOpen={isReceiveStockOpen}
+                onClose={() => setIsReceiveStockOpen(false)}
+                medicine={receivingMedicine}
+                onSuccess={() => {
+                     const reload = async() => {
+                        try {
+                           const res = await getInventory(1, 1000, inventorySearch);
+                           setInventoryItems(res.data);
+                        } catch(e){}
+                    };
+                    reload();
+                }}
+            />
           </TabsContent>
 
           {/* Alerts Tab */}
           <TabsContent value="alerts" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold">Stock Alerts</h2>
-              <Button onClick={() => window.location.reload()}>Refresh Alerts</Button>
+              <Button 
+                onClick={fetchAlertsData} 
+                disabled={isRefreshingAlerts}
+              >
+                  {isRefreshingAlerts ? 'Refreshing...' : 'Refresh Alerts'}
+              </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -338,6 +391,7 @@ export function PharmacistPortal() {
                             <p className="text-xs text-orange-700">
                                 Batch: {batch.batchNumber} • Qty: {batch.quantity}
                             </p>
+                            <p className="text-xs text-gray-500">Supplier: {batch.supplier}</p>
                             <p className="text-xs text-red-600 font-semibold">
                                 Expires: {new Date(batch.expiryDate).toLocaleDateString()}
                             </p>

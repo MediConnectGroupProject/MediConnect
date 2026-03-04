@@ -167,7 +167,12 @@ export const getInventoryAlerts = async (req, res) => {
                 name: true,
                 stock: true,
                 medicineCategory: { select: { name: true } },
-                suppliers: { select: { name: true }, take: 1 } // Naive supplier check
+                suppliers: { select: { name: true }, take: 1 }, // Explicitly linked suppliers
+                batches: {
+                    select: { supplier: { select: { name: true } } },
+                    orderBy: { expiryDate: 'desc' },
+                    take: 1 // Attempt to derive supplier from latest batch if explicit link fails
+                }
             }
         });
 
@@ -198,7 +203,7 @@ export const getInventoryAlerts = async (req, res) => {
                 stock: item.stock,
                 threshold: LOW_STOCK_THRESHOLD,
                 category: item.medicineCategory?.name || 'General',
-                supplier: item.suppliers[0]?.name || 'N/A'
+                supplier: item.suppliers[0]?.name || item.batches[0]?.supplier?.name || 'N/A'
             })),
             expiring: expiringBatches.map(batch => ({
                 id: batch.id,

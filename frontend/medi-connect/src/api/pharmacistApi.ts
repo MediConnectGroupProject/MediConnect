@@ -113,3 +113,80 @@ export const getInventory = async (page: number, limit: number, search: string, 
     return data;
 }
 
+// Medicine Management
+export const addMedicine = async (medicineData: any) => {
+    const res = await fetch(`${API_URL}/medicine`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(medicineData)
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to add medicine');
+    }
+    return res.json();
+};
+
+export const updateMedicine = async (medicineId: string, medicineData: any) => {
+    const res = await fetch(`${API_URL}/medicine/${medicineId}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(medicineData)
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to update medicine');
+    }
+    return res.json();
+};
+
+// Batch Management
+export const addBatch = async (batchData: any) => {
+    const res = await fetch(`${API_URL}/batch`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(batchData)
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to add batch');
+    }
+    return res.json();
+};
+
+// Metadata mapping endpoints
+export const getCategory = async () => {
+    const res = await fetch(`${API_URL}/category`, {
+         headers: { 'Content-Type': 'application/json' },
+         credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch categories');
+    return res.json();
+};
+
+export const getDosage = async () => {
+    const res = await fetch(`${API_URL}/dosage`, {
+         headers: { 'Content-Type': 'application/json' },
+         credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch dosage forms');
+    return res.json();
+};
+
+export const getSuppliers = async () => {
+    const res = await fetch(`${API_URL}/suppliers`, {
+         headers: { 'Content-Type': 'application/json' },
+         credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch suppliers');
+    return res.json();
+};
