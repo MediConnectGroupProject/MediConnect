@@ -10,28 +10,12 @@ import {
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import {
-  Calendar,
-  FileText,
-  CreditCard,
-  Bell,
-  Download,
-  Home,
-  LogOut,
-  User,
-} from "lucide-react";
-import { Separator } from "../../components/ui/separator";
-
-import { useNavigate } from 'react-router-dom';
-import { RouteNames } from '../../utils/RouteNames';
-import { useAuth } from '../../utils/authContext';
+import { FileText, Calendar, Download, Bell, CreditCard } from 'lucide-react';
 
 
 import { getMyAppointments, getMyPrescriptions, getNotifications, getBillingHistory } from '../../api/patientApi';
 
 export default function PatientPortal() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("appointments");
 
   const [appointments, setAppointments] = useState<any[]>([]);

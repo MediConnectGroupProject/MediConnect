@@ -12,7 +12,7 @@ export function InventoryView() {
   useEffect(() => {
     const fetch = async () => {
        const api = await import('../../api/pharmacistApi');
-       const data = await api.getInventory();
+       const data = await api.getInventory(1, 1000, '', false);
        
        const mapped = data.map((i: any) => ({
            id: i.medicineId,

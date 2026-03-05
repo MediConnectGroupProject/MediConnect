@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { User, FileText, Edit, AlertCircle } from 'lucide-react';
+import { User, FileText, Edit, AlertCircle, Lock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 
 // Defines the shape of user profile data
 interface UserProfileData {
@@ -32,6 +34,7 @@ interface UserProfileData {
   pharmacySection?: string; // For Pharmacist
   labSection?: string; // For MLT
   joinedDate?: string;
+  lastLogin?: string;
 }
 
 interface UserProfileProps {
@@ -41,28 +44,13 @@ interface UserProfileProps {
   onEdit?: (data: UserProfileData) => void;
   role?: 'patient' | 'doctor' | 'pharmacist' | 'mlt' | 'admin' | 'receptionist'; // Override role for display context if needed
   isMe?: boolean; // NEW: If true, uses userApi for fetch/update "me"
+  fetchUser?: (userId: string) => Promise<UserProfileData>; // NEW: Custom fetcher
 }
 
-export function UserProfile({ userId, initialData, readOnly = false, onEdit, role, isMe = false }: UserProfileProps) {
-    // Mock data if no initialData provided
-    const defaultData: UserProfileData = {
-        id: userId || 'u_dummy',
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        phone: '+1 (555) 123-4567',
-        role: (role as any) || 'patient',
-        age: 34,
-        gender: 'Male',
-        bloodType: 'O+',
-        allergies: [],
-        medications: [],
-        conditions: [],
-        specialization: 'General Practice',
-        licenseNumber: 'DOC-12345',
-        department: 'Cardiology'
-    };
-
-    const [data, setData] = useState<UserProfileData>(initialData || defaultData);
+export function UserProfile({ userId, initialData, readOnly = false, onEdit, isMe = false, fetchUser: customFetch }: UserProfileProps) {
+    
+    // Initialize with null if fetching is needed
+    const [data, setData] = useState<UserProfileData | null>(initialData || null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -76,17 +64,15 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                  try {
                      let fetchedData = null;
                      
-                     if (isMe) {
+                     if (customFetch && userId) {
+                         fetchedData = await customFetch(userId);
+                     } else if (isMe) {
                          const api = await import('../api/userApi');
                          fetchedData = await api.getProfile();
                      } else if (userId) {
-                         // Viewing another user (e.g. Doctor viewing Patient)
-                         // Currently assumes Doctor viewing Patient via doctorApi
-                         // TODO: Make this more robust for Admin viewing others
-                         try {
-                            const api = await import('../api/doctorApi');
-                            fetchedData = await api.getPatient(userId);
-                         } catch (e) { console.warn("DoctorAPI fetch failed", e); }
+                         const api = await import('../api/doctorApi');
+                         // This will throw if !res.ok
+                         fetchedData = await api.getPatient(userId);
                      }
                      
                      if (fetchedData) {
@@ -100,7 +86,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                      }
                  } catch (e) {
                      console.error("Failed to fetch user profile", e);
-                     setError("Failed to load profile.");
+                     setError(e instanceof Error ? e.message : "Failed to load profile.");
                  } finally {
                      setLoading(false);
                  }
@@ -110,7 +96,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
     }, [userId, isMe, initialData]);
 
     const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState<UserProfileData>(data);
+    const [editForm, setEditForm] = useState<UserProfileData | null>(initialData || null);
     
     // Update local state if prop changes
     useEffect(() => {
@@ -122,16 +108,18 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
 
     // Update edit form when data changes (e.g. after fetch)
     useEffect(() => {
-        setEditForm(data);
+        if (data) setEditForm(data);
     }, [data]);
 
     const handleSave = async () => {
         if (isMe) {
              try {
                  const api = await import('../api/userApi');
-                 await api.updateProfile(editForm);
-                 setData(editForm);
-                 setIsEditing(false);
+                 if (editForm) {
+                    await api.updateProfile(editForm);
+                    setData(editForm);
+                    setIsEditing(false);
+                 }
                  // Optional: Toast success
              } catch (e) {
                  console.error("Failed to update profile", e);
@@ -139,18 +127,69 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
              }
         } else {
             // Local save (parent handles persistence via onEdit if provided)
-            setData(editForm);
-            setIsEditing(false);
-            if (onEdit) onEdit(editForm);
+            if (editForm) {
+                setData(editForm);
+                setIsEditing(false);
+                if (onEdit) onEdit(editForm);
+            }
         }
     };
 
     const handleCancel = () => {
-        setEditForm(data);
+        setEditForm(data!);
         setIsEditing(false);
     };
 
-    if (isEditing && (!readOnly || isMe)) {
+    // Change Password State
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+
+    const handleChangePassword = async () => {
+        setPasswordError('');
+        setPasswordSuccess('');
+        
+        if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+            setPasswordError("Please fill in all fields");
+            return;
+        }
+
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            setPasswordError("New passwords don't match");
+            return;
+        }
+
+        // Basic client-side validation for password strength
+        // RegEx: Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+        const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+        if (!strongPasswordRegex.test(passwordForm.newPassword)) {
+            setPasswordError('Password must be at least 8 chars long and include uppercase, lowercase, number, and special char.');
+            return;
+        }
+        
+        try {
+            const api = await import('../api/userApi');
+            await api.changePassword({ 
+                currentPassword: passwordForm.currentPassword, 
+                newPassword: passwordForm.newPassword 
+            });
+            setPasswordSuccess("Password changed successfully");
+            setTimeout(() => {
+                setIsChangePasswordOpen(false);
+                setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                setPasswordSuccess('');
+            }, 2000);
+        } catch (e: any) {
+            setPasswordError(e.message || "Failed to change password");
+        }
+    };
+
+    if (loading) return <div className="p-8 text-center">Loading profile...</div>;
+    if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
+    if (!data) return <div className="p-8 text-center">No profile data found.</div>;
+
+    if (isEditing && (!readOnly || isMe) && editForm) {
         return (
             <Card>
                 <CardHeader>
@@ -164,9 +203,8 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                              <Input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
                         </div>
                         <div className="col-span-12 md:col-span-6 space-y-2">
-                             {/* Email often read-only for security, but making editable for now */}
                              <Label>Email</Label>
-                             <Input value={editForm.email} disabled className="bg-gray-100 cursor-not-allowed" title="Contact admin to change email" />
+                             <Input value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
                         </div>
                          <div className="col-span-12 md:col-span-4 space-y-2">
                              <Label>Phone</Label>
@@ -258,7 +296,7 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                      <CardContent className="p-0 flex flex-col md:flex-row items-center gap-6">
                         <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl font-bold">
                             {data.name ? 
-                                data.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+                                data.name.split(' ').map(n => n[0]).join('').substring(0, 1).toUpperCase() 
                                 : <User className="h-12 w-12" />
                             }
                         </div>
@@ -267,7 +305,13 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                                 <h2 className="text-2xl font-bold text-gray-800">{data.name}</h2>
                                 <Badge variant="secondary" className="capitalize">{data.role}</Badge>
                             </div>
+
                             <p className="text-gray-500">{data.email} • {data.phone}</p>
+                            {data.lastLogin && (
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Last active: {new Date(data.lastLogin).toLocaleString()}
+                                </p>
+                            )}
                             <div className="flex flex-wrap gap-4 mt-3 justify-center md:justify-start">
                                 {data.role === 'patient' && (
                                     <>
@@ -294,9 +338,16 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                             </div>
                         </div>
                         {(!readOnly || isMe) && (
-                            <Button variant="outline" onClick={() => setIsEditing(true)}>
-                                <Edit className="h-4 w-4 mr-2" /> Edit Profile
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                                    <Edit className="h-4 w-4 mr-2" /> Edit Profile
+                                </Button>
+                                {isMe && (
+                                    <Button variant="outline" onClick={() => setIsChangePasswordOpen(true)}>
+                                        <Lock className="h-4 w-4 mr-2" /> Change Password
+                                    </Button>
+                                )}
+                            </div>
                         )}
                     </CardContent>
                     )}
@@ -425,6 +476,52 @@ export function UserProfile({ userId, initialData, readOnly = false, onEdit, rol
                     </CardContent>
                 </Card>
             )}
+
+            {/* Password Change Dialog */}
+            <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Change Password</DialogTitle>
+                        <DialogDescription>
+                            Enter your current password and a new strong password to update your credentials.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        {passwordError && <div className="text-sm text-red-500 bg-red-50 p-2 rounded">{passwordError}</div>}
+                        {passwordSuccess && <div className="text-sm text-green-500 bg-green-50 p-2 rounded">{passwordSuccess}</div>}
+                        
+                        <div className="space-y-2">
+                            <Label>Current Password</Label>
+                            <Input 
+                                type="password" 
+                                value={passwordForm.currentPassword} 
+                                onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})} 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>New Password</Label>
+                            <Input 
+                                type="password" 
+                                value={passwordForm.newPassword} 
+                                onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})} 
+                            />
+                            <p className="text-xs text-gray-500">Min 8 chars, uppercase, lowercase, number, special char.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Confirm New Password</Label>
+                            <Input 
+                                type="password" 
+                                value={passwordForm.confirmPassword} 
+                                onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} 
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsChangePasswordOpen(false)}>Cancel</Button>
+                        <Button onClick={handleChangePassword} disabled={!!passwordSuccess}>Update Password</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
         </div>
     );

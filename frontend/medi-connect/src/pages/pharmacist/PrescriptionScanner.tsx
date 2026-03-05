@@ -31,17 +31,17 @@ export function PrescriptionScanner() {
             doctorName: found.appointment?.doctor?.user ? `Dr. ${found.appointment.doctor.user.firstName}` : 'Unknown',
             date: new Date(found.issuedAt).toLocaleDateString(),
             status: found.status,
-            items: found.prescriptionItems.map((i: any) => ({
-                name: i.medicineName || i.medicine?.name,
+            prescriptionItems: found.prescriptionItems.map((i: any) => ({
+                medicineName: i.medicineName || i.medicine?.name,
                 dosage: i.dosage,
                 frequency: 'As directed' // Schema gap?
             })),
             qrCodeData: ''
-        });
+        } as unknown as Prescription);
       } else {
         setError('Prescription not found in active queue.');
       }
-    } catch (err) {
+    } catch {
       setError('Error scanning prescription.');
     } finally {
       setLoading(false);
@@ -57,7 +57,7 @@ export function PrescriptionScanner() {
       // Re-fetch or locally update
       const updated = { ...prescription, status: 'DISPENSED' };
       setPrescription(updated as any);
-    } catch (err) {
+    } catch {
       setError('Failed to dispense.');
     } finally {
       setLoading(false);
@@ -105,8 +105,8 @@ export function PrescriptionScanner() {
              <div className="py-2">
                <h4 className="font-medium text-sm mb-1">Medications:</h4>
                <ul className="list-disc list-inside text-sm text-gray-700">
-                 {prescription.items.map((item, i) => (
-                   <li key={i}>{item.name} - {item.dosage} ({item.frequency})</li>
+                 {prescription.prescriptionItems.map((item: any, i: number) => (
+                   <li key={i}>{item.medicineName || item.name} - {item.dosage} ({item.frequency})</li>
                  ))}
                </ul>
              </div>

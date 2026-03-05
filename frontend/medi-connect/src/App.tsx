@@ -14,24 +14,44 @@ import { PortalLayout } from './pages/layouts/PortalLayout'
 import { PortalRoutes } from './routes/PortalRoutes'
 import { Toaster } from 'react-hot-toast'
 import ProfilePage from './pages/common/ProfilePage'
+import MaintenanceGuard from './guards/MaintenanceGuard'
+import PrescriptionSlip from './pages/public/PrescriptionSlip';
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: (
-        <LandingPage />
+        <MaintenanceGuard>
+            <LandingPage />
+        </MaintenanceGuard>
     )
   },
   {
-    path: '/register', // Explicit path for registration
+    path: '/admin-login', // Backdoor for admins during maintenance
     element: (
-        <PublicRoute><Register /></PublicRoute>
+        <PublicRoute>
+            <Login />
+        </PublicRoute>
+    )
+  },
+  {
+    path: '/prescription/:id',
+    element: <PrescriptionSlip />
+  },
+  {
+    path: '/register', 
+    element: (
+        <MaintenanceGuard>
+            <PublicRoute><Register /></PublicRoute>
+        </MaintenanceGuard>
     )
   },
   {
     path: RouteNames.LOGIN,
     element: (
-      <PublicRoute><Login /></PublicRoute>
+      <MaintenanceGuard>
+        <PublicRoute><Login /></PublicRoute>
+      </MaintenanceGuard>
     ),
   },
   {

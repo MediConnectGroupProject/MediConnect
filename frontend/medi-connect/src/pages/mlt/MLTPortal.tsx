@@ -5,17 +5,12 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { FileText, CreditCard, CheckCircle, TestTube, Download, Home, LogOut, Upload, Search, DollarSign, Receipt, AlertCircle, User } from 'lucide-react';
+import { FileText, CreditCard, CheckCircle, TestTube, Download, Upload, Search, DollarSign, Receipt, AlertCircle } from 'lucide-react';
 
 
-import { useNavigate } from 'react-router-dom';
-import { RouteNames } from '../../utils/RouteNames';
-import { useAuth } from '../../utils/authContext';
 
 
 export function MLTPortal() {
-  const navigate = useNavigate();
-  const { logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('reports');
   const [reportDetails, setReportDetails] = useState('');

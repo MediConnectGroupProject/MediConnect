@@ -5,17 +5,29 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { QRCodeSVG } from 'qrcode.react';
 import { createPrescription } from '../../api/doctorApi';
-import type { Prescription } from '../../types';
-import { Plus, Trash2 } from 'lucide-react';
+import type { Appointment, Prescription } from '../../types';
+import { Plus, Trash2, User } from 'lucide-react';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
 
-export function PrescriptionForm() {
+interface PrescriptionFormProps {
+    activeAppointment?: Appointment | null;
+}
+
+export function PrescriptionForm({ activeAppointment }: PrescriptionFormProps) {
 
   const [patientId, setPatientId] = useState('');
   const [items, setItems] = useState([{ name: '', dosage: '', frequency: '', timing: 'After Food', duration: '', tabletCount: '', instructions: '' }]);
   const [extraInstructions, setExtraInstructions] = useState('');
+
+  // Auto-fill active patient (with safety check for re-renders)
+  const [lastAutoFilledId, setLastAutoFilledId] = useState<string | null>(null);
+
+  if (activeAppointment && activeAppointment.patientId !== lastAutoFilledId) {
+      setPatientId(activeAppointment.patientId);
+      setLastAutoFilledId(activeAppointment.patientId);
+  }
 
   const [generatedPrescription, setGeneratedPrescription] = useState<Prescription | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,14 +56,14 @@ export function PrescriptionForm() {
       // REAL API CALL
       const prescription = await createPrescription({
         patientId: patientId || 'u2', // Should essentially select from a list or search
-        appointmentId: null, // or link to current visit
+        appointmentId: activeAppointment?.id || null, // Link to current visit if active
         items: items, // backend controller handles mapping
         notes: extraInstructions
       });
 
-      // Add QR Code Data (mocked or returned from backend)
+      // Add QR Code Data (URL to public slip)
       if (!prescription.qrCodeData) {
-          prescription.qrCodeData = JSON.stringify(prescription); 
+          prescription.qrCodeData = `${window.location.origin}/prescription/${prescription.prescriptionId}`;
       }
       
       setGeneratedPrescription(prescription);
@@ -63,67 +75,98 @@ export function PrescriptionForm() {
   };
 
   return (
-    <Card className="col-span-1">
+    <Card className="col-span-1 h-fit sticky top-6">
       <CardHeader>
         <CardTitle>Issue E-Prescription</CardTitle>
       </CardHeader>
       <CardContent>
         {!generatedPrescription ? (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Patient ID</Label>
-              <Input 
-                placeholder="Enter Patient ID (e.g. u2)" 
-                value={patientId} 
-                onChange={e => setPatientId(e.target.value)} 
-              />
-            </div>
+            
+            {/* Auto-detected Patient Banner */}
+            {activeAppointment ? (
+                <div className="bg-blue-50 border border-blue-100 rounded-md p-3 flex items-center gap-3 mb-2">
+                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <User className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-blue-900">Active Patient</p>
+                        <p className="text-xs text-blue-700 font-bold">{activeAppointment.patientName}</p>
+                    </div>
+                    <input type="hidden" value={patientId} />
+                </div>
+            ) : (
+                <div className="space-y-2">
+                <Label>Patient ID</Label>
+                <Input 
+                    placeholder="Enter Patient ID (e.g. u2)" 
+                    value={patientId} 
+                    onChange={e => setPatientId(e.target.value)} 
+                />
+                </div>
+            )}
+
 
             <div className="space-y-4">
               <Label>Medications</Label>
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-start border p-2 rounded bg-gray-50">
-                  <div className="col-span-12 md:col-span-4">
-                     <p className="text-xs mb-1">Drug Name</p>
-                     <Input placeholder="Paracetamol" value={item.name} onChange={e => updateItem(index, 'name', e.target.value)} required />
-                  </div>
-                  <div className="col-span-6 md:col-span-2">
-                     <p className="text-xs mb-1">Dosage</p>
-                     <Input 
-                        placeholder="500" 
-                        value={item.dosage} 
-                        onChange={e => updateItem(index, 'dosage', e.target.value)}
-                        onBlur={e => {
-                            const val = e.target.value;
-                            if(val && /^\d+$/.test(val)) {
-                                updateItem(index, 'dosage', val + 'mg');
-                            }
-                        }}
-                     />
-                  </div>
-                  <div className="col-span-6 md:col-span-2">
-                     <p className="text-xs mb-1">Qty</p>
-                     <Input 
-                        placeholder="e.g. 10" 
-                        value={(item as any).tabletCount || ''} 
-                        onChange={e => updateItem(index, 'tabletCount', e.target.value)} 
-                     />
-                  </div>
-                  <div className="col-span-10 md:col-span-3">
-                     <p className="text-xs mb-1">Duration</p>
-                     <Input placeholder="e.g. 5 days" value={item.duration} onChange={e => updateItem(index, 'duration', e.target.value)} />
-                  </div>
-                  <div className="col-span-2 md:col-span-1 flex flex-col justify-end pb-0.5">
-                    <Button type="button" variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50 h-10 w-10" onClick={() => removeItem(index)}>
+                <div key={index} className="flex flex-col gap-3 border p-3 rounded-md bg-gray-50 relative">
+                  <div className="absolute top-2 right-2">
+                    <Button type="button" variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8" onClick={() => removeItem(index)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+
+                  <div className="w-full pr-10">
+                     <p className="text-xs font-semibold mb-1 text-gray-700">Drug Name</p>
+                     <Input placeholder="Paracetamol" className="bg-white" value={item.name} onChange={e => updateItem(index, 'name', e.target.value)} required />
+                  </div>
                   
-                  <div className="col-span-12 flex flex-col md:flex-row gap-4 mt-2">
-                      <div className="w-full md:w-1/3">
-                         <p className="text-xs mb-1">Timing</p>
+                  <div className="grid grid-cols-3 gap-2 w-full">
+                    <div className="col-span-1">
+                       <p className="text-xs font-semibold mb-1 text-gray-700">Dosage</p>
+                       <Input 
+                          placeholder="500" 
+                          className="bg-white"
+                          value={item.dosage} 
+                          onChange={e => updateItem(index, 'dosage', e.target.value)}
+                          onBlur={e => {
+                              const val = e.target.value;
+                              if(val && /^\d+$/.test(val)) {
+                                  updateItem(index, 'dosage', val + 'mg');
+                              }
+                          }}
+                       />
+                    </div>
+                    <div className="col-span-1">
+                       <p className="text-xs font-semibold mb-1 text-gray-700">Qty</p>
+                       <Input 
+                          placeholder="10" 
+                          type="number"
+                          min="1"
+                          className="bg-white"
+                          value={(item as any).tabletCount || ''} 
+                          onChange={e => updateItem(index, 'tabletCount', e.target.value)} 
+                       />
+                    </div>
+                    <div className="col-span-1">
+                       <p className="text-xs font-semibold mb-1 text-gray-700">Days</p>
+                       <Input 
+                          placeholder="5" 
+                          type="number"
+                          min="1"
+                          className="bg-white"
+                          value={item.duration} 
+                          onChange={e => updateItem(index, 'duration', e.target.value)} 
+                       />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 w-full mt-1">
+                      <div className="w-full">
+                         <p className="text-xs font-semibold mb-1 text-gray-700">Timing</p>
                          <Select value={(item as any).timing} onValueChange={val => updateItem(index, 'timing', val)}>
-                            <SelectTrigger className="h-10 w-full">
+                            <SelectTrigger className="h-10 w-full bg-white">
                                 <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -132,11 +175,11 @@ export function PrescriptionForm() {
                             </SelectContent>
                          </Select>
                       </div>
-                      <div className="w-full md:w-2/3">
-                         <p className="text-xs mb-1">Extra Instructions (Optional)</p>
+                      <div className="w-full">
+                         <p className="text-xs font-semibold mb-1 text-gray-700">Extra Instructions (Optional)</p>
                          <Input 
                             placeholder="e.g. Take with warm water" 
-                            className="w-full"
+                            className="w-full bg-white"
                             value={(item as any).instructions || ''} 
                             onChange={e => updateItem(index, 'instructions', e.target.value)} 
                          />
@@ -177,8 +220,8 @@ export function PrescriptionForm() {
             <div className="w-full">
                <h4 className="font-semibold mb-2">Details:</h4>
                <ul className="list-disc list-inside text-sm">
-                 {generatedPrescription.items.map((i, idx) => (
-                   <li key={idx}>{i.name} - {i.dosage} ({i.frequency})</li>
+                 {generatedPrescription.prescriptionItems.map((i, idx) => (
+                   <li key={idx}>{i.medicineName || i.name} - {i.dosage} ({i.instructions || 'No instructions'})</li>
                  ))}
                </ul>
                {(generatedPrescription as any).notes && (

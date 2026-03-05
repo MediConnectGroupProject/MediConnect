@@ -1,11 +1,11 @@
 const API_URL = `${import.meta.env.VITE_API_URL}/auth`;
 
-export const loginUser = async (email, password) => {
+export const loginUser = async (email: string, password: string, selectedRole?: string) => {
     const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, selectedRole })
     });
     
     const data = await res.json();
@@ -13,7 +13,7 @@ export const loginUser = async (email, password) => {
     return data;
 }
 
-export const registerUser = async (userData) => {
+export const registerUser = async (userData: any) => {
     const res = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

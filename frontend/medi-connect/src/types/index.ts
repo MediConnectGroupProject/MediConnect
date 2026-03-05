@@ -2,7 +2,9 @@ export type Role = 'DOCTOR' | 'PATIENT' | 'PHARMACIST' | 'ADMIN' | 'RECEPTIONIST
 
 export interface User {
   id: string;
-  name: string;
+  name: string; // Keep for backward compatibility if used
+  firstName: string;
+  lastName: string;
   email: string;
   roles: Role[];
   primaryRole: Role;
@@ -16,27 +18,34 @@ export interface Appointment {
   doctorName: string;
   date: string; // ISO date string
   time: string;
-  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'IN_PROGRESS';
   reason?: string;
 }
 
 export interface PrescriptionItem {
-  medicationId: string;
-  name: string;
+  id?: string;
+  itemId?: string; // Schema
+  medicationId?: string;
+  medicineId?: string;
+  name?: string; // legacy support
+  medicineName?: string; // actual schema
   dosage: string;
-  frequency: string;
-  duration: string;
+  frequency?: string;
+  timing?: string;
+  duration?: string;
+  instructions?: string;
 }
 
 export interface Prescription {
   id: string;
+  prescriptionId: string; // Backend uses prescriptionId usually, or id? Schema says prescriptionId.
   appointmentId: string;
   patientId: string;
   doctorId: string;
   doctorName: string;
   date: string;
-  items: PrescriptionItem[];
-  status: 'ISSUED' | 'DISPENSED';
+  prescriptionItems: PrescriptionItem[]; // Changed from items
+  status: 'ISSUED' | 'DISPENSED' | 'PENDING';
   qrCodeData: string; // The content encoded in the QR
   notes?: string;
 }

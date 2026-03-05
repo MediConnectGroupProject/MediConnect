@@ -1,18 +1,27 @@
-import pkg from '@prisma/client';
-const {
-  PrismaClient
-} = pkg;
-import {
-  faker
-} from '@faker-js/faker';
+import { PrismaClient } from '@prisma/client';
+import { faker } from '@faker-js/faker';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Starting seed...');
+  console.log('Starting comprehensive seed...');
 
-  // 1. Seed Roles
+  // 1. System Settings
+  await prisma.systemSettings.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      hospitalName: 'MediConnect Health',
+      supportEmail: 'help@mediconnect.com',
+      hospitalAddress: 'Colombo 07, Sri Lanka',
+      hospitalPhone: '+94 11 255 5555'
+    }
+  });
+  console.log('System settings initialized.');
+
+  // 2. Seed Roles
   const roles = ['PATIENT', 'DOCTOR', 'ADMIN', 'PHARMACIST', 'RECEPTIONIST', 'MLT'];
   for (const role of roles) {
     await prisma.role.upsert({
@@ -23,307 +32,436 @@ async function main() {
   }
   console.log('Roles seeded.');
 
-  // Helper to hash password
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  // 2. Create or Update Doctor User
-  const doctorEmail = 'doctor@example.com';
-  
-  // Upsert User to ensure password and verification match
-  const doctorUser = await prisma.user.upsert({
-      where: { email: doctorEmail },
-      update: {
-          password: hashedPassword,
-          isEmailVerified: true,
-          status: 'ACTIVE'
-      },
-      create: {
-        firstName: 'John',
-        lastName: 'Doe',
-        email: doctorEmail,
-        phone: '+94770000001',
-        password: hashedPassword,
-        isEmailVerified: true,
-        status: 'ACTIVE',
-        roles: {
-            create: {
-                role: { connect: { name: 'DOCTOR' } }
-            }
-        }
-      }
-  });
-
-  // Ensure Doctor Profile exists
-  await prisma.doctor.upsert({
-      where: { doctorId: doctorUser.id },
-      update: {},
-      create: {
-            doctorId: doctorUser.id,
-            specialization: 'Cardiologist',
-            availability: true
-      }
-  });
-
-  console.log(`Created/Updated Doctor: ${doctorEmail} / password123`);
-
-  // 3. Create or Update Patient User
-  const patientEmail = 'patient@example.com';
-  
-  const patientUser = await prisma.user.upsert({
-      where: { email: patientEmail },
-      update: {
-          password: hashedPassword,
-          isEmailVerified: true,
-          status: 'ACTIVE'
-      },
-      create: {
-        firstName: 'Jane',
-        lastName: 'Smith',
-        email: patientEmail,
-        phone: '+94770000002',
-        password: hashedPassword,
-        isEmailVerified: true,
-        status: 'ACTIVE',
-         roles: {
-            create: {
-                role: { connect: { name: 'PATIENT' } }
-            }
-        }
-    }
-  });
-
-  // Ensure Patient Profile exists
-  await prisma.patient.upsert({
-    where: { patientId: patientUser.id },
-    update: {},
+  // 3. Admin Setup (Default Admin)
+  const adminEmail = 'admin@example.com';
+  const adminUser = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: { password: hashedPassword, status: 'ACTIVE' },
     create: {
-        patientId: patientUser.id,
-        nic: '900000000V',
-        dob: new Date('1990-01-01'),
-        address: '123 Main St, Colombo',
-        gender: 'FEMALE'
+      firstName: 'Super',
+      lastName: 'Admin',
+      email: adminEmail,
+      phone: '+94770000000',
+      password: hashedPassword,
+      isEmailVerified: true,
+      status: 'ACTIVE',
+      roles: { create: { role: { connect: { name: 'ADMIN' } } } }
     }
   });
-  
-  console.log(`Created/Updated Patient: ${patientEmail} / password123`);
 
-  // 4. Create other roles (Admin, Pharmacist, Receptionist, MLT)
-  const additionalRoles = [
-      { role: 'ADMIN', email: 'admin@example.com', firstName: 'Super', lastName: 'Admin' },
-      { role: 'PHARMACIST', email: 'pharmacist@example.com', firstName: 'Medi', lastName: 'Pharm' },
-      { role: 'RECEPTIONIST', email: 'receptionist@example.com', firstName: 'Front', lastName: 'Desk' },
-      { role: 'MLT', email: 'mlt@example.com', firstName: 'Lab', lastName: 'Tech' }
+  const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+  const adminRoleLink = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } } });
+  if (!adminRoleLink) {
+      await prisma.userRole.create({ data: { userId: adminUser.id, roleId: adminRole.id } });
+  }
+
+  // 4. Multi-Doctor Setup
+  const doctorsData = [
+    { email: 'doctor@example.com', first: 'John', last: 'Doe', spec: 'Cardiologist' },
+    { email: 'doctor2@example.com', first: 'Jane', last: 'Smith', spec: 'Pediatrician' }
   ];
 
-  for (const r of additionalRoles) {
+  const dbDoctors = [];
+  for (const doc of doctorsData) {
+      const docUser = await prisma.user.upsert({
+        where: { email: doc.email },
+        update: { password: hashedPassword, status: 'ACTIVE' },
+        create: {
+          firstName: doc.first,
+          lastName: doc.last,
+          email: doc.email,
+          phone: faker.phone.number(),
+          password: hashedPassword,
+          isEmailVerified: true,
+          status: 'ACTIVE'
+        }
+      });
+
+      const dRole = await prisma.role.findUnique({ where: { name: 'DOCTOR' } });
+      const dLink = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: docUser.id, roleId: dRole.id } } });
+      if (!dLink) await prisma.userRole.create({ data: { userId: docUser.id, roleId: dRole.id } });
+
+      const doctorProfile = await prisma.doctor.upsert({
+        where: { doctorId: docUser.id },
+        update: {},
+        create: {
+          doctorId: docUser.id,
+          specialization: doc.spec,
+          bio: `Experienced ${doc.spec} dedicated to patient care.`,
+          qualifications: 'MBBS, MD',
+          experience: Math.floor(Math.random() * 15) + 5,
+          availability: true
+        }
+      });
+      dbDoctors.push(doctorProfile);
+  }
+  const primaryDoctorUser = dbDoctors[0];
+  console.log('Doctors seeded.');
+
+  // 5. Pharmacist, MLT, Receptionist Setup
+  const staffTypes = [
+      { email: 'pharmacist@example.com', first: 'Anna', last: 'Pharma', role: 'PHARMACIST' },
+      { email: 'mlt@example.com', first: 'Mike', last: 'Lab', role: 'MLT' },
+      { email: 'receptionist@example.com', first: 'Sarah', last: 'Front', role: 'RECEPTIONIST' }
+  ];
+
+  for (const staff of staffTypes) {
+      const sUser = await prisma.user.upsert({
+        where: { email: staff.email },
+        update: { password: hashedPassword, status: 'ACTIVE' },
+        create: {
+          firstName: staff.first,
+          lastName: staff.last,
+          email: staff.email,
+          phone: faker.phone.number(),
+          password: hashedPassword,
+          isEmailVerified: true,
+          status: 'ACTIVE'
+        }
+      });
+
+      const sRole = await prisma.role.findUnique({ where: { name: staff.role } });
+      const sLink = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: sUser.id, roleId: sRole.id } } });
+      if (!sLink) await prisma.userRole.create({ data: { userId: sUser.id, roleId: sRole.id } });
+  }
+
+  // 6. Expanded Dosage Forms & Medicine Categories
+  const dosageNames = [
+      { name: 'Tablet', defaultUnit: 'mg' },
+      { name: 'Capsule', defaultUnit: 'mg' },
+      { name: 'Syrup', defaultUnit: 'ml' },
+      { name: 'Drops', defaultUnit: 'drops' },
+      { name: 'Cream', defaultUnit: 'mg' }
+  ];
+
+  for (const d of dosageNames) {
+      await prisma.dosageForms.upsert({
+          where: { name: d.name },
+          update: {},
+          create: { name: d.name, defaultUnit: d.defaultUnit }
+      });
+  }
+
+  const tabletDosage = await prisma.dosageForms.findUnique({ where: { name: 'Tablet' } });
+  const syrupDosage = await prisma.dosageForms.findUnique({ where: { name: 'Syrup' } });
+
+  const categories = ['Antibiotics', 'Analgesics', 'Cardiovascular', 'Supplements', 'Cough & Cold', 'Cosmetics', 'Medical Devices', 'Baby Care', 'Personal Care', 'First Aid', 'Surgical Supplies'];
+  for (const cat of categories) {
+    await prisma.medicineCategory.upsert({
+        where: { name: cat },
+        update: {},
+        create: { name: cat }
+    });
+  }
+
+  // 7. Suppliers
+  const suppliersData = [
+      { name: 'PharmaCorp', contactPerson: 'John Sales', email: 'sales@pharmacorp.com', phone: '+94771111111' },
+      { name: 'MediSupply Global', contactPerson: 'Jane Dist', email: 'orders@medisupply.com', phone: '+94772222222' }
+  ];
+
+  const dbSuppliers = [];
+  for (const s of suppliersData) {
+      let supplier = await prisma.supplier.findFirst({ where: { name: s.name } });
+      if (!supplier) {
+          supplier = await prisma.supplier.create({
+              data: {
+                  ...s,
+                  address: faker.location.streetAddress()
+              }
+          });
+      }
+      dbSuppliers.push(supplier);
+  }
+
+  // 8. Medicines with Unit Conversions Data & Stock Adjustments
+  const medicinesData = [
+    { name: 'Amoxicillin 500mg', baseStock: 1500, price: 25.00, dosageId: tabletDosage.dosageId, conversions: [{name: 'Card', multi: 10}] },
+    { name: 'Paracetamol 500mg', baseStock: 3000, price: 5.00, dosageId: tabletDosage.dosageId, conversions: [{name: 'Card', multi: 10}, {name: 'Box', multi: 100}] },
+    { name: 'Atorvastatin 20mg', baseStock: 800, price: 45.00, dosageId: tabletDosage.dosageId, conversions: [{name: 'Card', multi: 15}] },
+    { name: 'Vitamin C 100mg', baseStock: 2500, price: 15.00, dosageId: tabletDosage.dosageId, conversions: [{name: 'Bottle', multi: 60}] },
+    { name: 'Cough Syrup (Guaifenesin)', baseStock: 50, price: 350.00, dosageId: syrupDosage.dosageId, conversions: [] } // Just base bottles
+  ];
+
+  const dbMedicines = [];
+  for (const m of medicinesData) {
+      const catName = categories[Math.floor(Math.random() * categories.length)];
+      const cat = await prisma.medicineCategory.findFirst({ where: { name: catName } });
+      
+      let med = await prisma.medicine.findFirst({ where: { name: m.name } });
+      if(!med) {
+         med = await prisma.medicine.create({
+             data: {
+                name: m.name,
+                stock: m.baseStock,
+                price: m.price,
+                categoryId: cat.categoryId,
+                dosageId: m.dosageId
+             }
+         });
+      }
+      dbMedicines.push(med);
+
+      // Unit Conversions
+      for(const conv of m.conversions) {
+          await prisma.unitConversion.create({
+             data: {
+                medicineId: med.medicineId,
+                unitName: conv.name,
+                multiplier: conv.multi
+             }
+          });
+      }
+
+      // Normal Batch
+      const normalBatch = await prisma.batch.create({
+          data: {
+              medicineId: med.medicineId,
+              batchNumber: `BN-${faker.string.alphanumeric(5).toUpperCase()}`,
+              supplierId: dbSuppliers[0].id,
+              quantity: m.baseStock,
+              originalQuantity: m.baseStock,
+              expiryDate: faker.date.future({ years: 2 }), 
+              unitCost: m.price * 0.7 
+          }
+      });
+
+      // Stock Adjustments
+      if(m.name !== 'Cough Syrup (Guaifenesin)') {
+          await prisma.stockAdjustment.create({
+              data: {
+                  medicineId: med.medicineId,
+                  batchId: normalBatch.id,
+                  quantity: -10, // wastage
+                  reason: 'DAMAGED',
+                  notes: 'Dropped during transit',
+                  userId: adminUser.id // Admin did adjustment
+              }
+          });
+          // Fix master stock count slightly
+          await prisma.medicine.update({
+             where: { medicineId: med.medicineId },
+             data: { stock: { decrement: 10 } }
+          });
+      }
+  }
+
+  // Create explicit Low/Critical Stock and Expiring instances
+  // Update Atorvastatin to Critical low stock manually
+  await prisma.medicine.update({
+      where: { medicineId: dbMedicines[2].medicineId },
+      data: { stock: 4 } // Very low stock
+  });
+
+  // Adding an Expiring Batch for Paracetamol
+  await prisma.batch.create({
+      data: {
+          medicineId: dbMedicines[1].medicineId,
+          batchNumber: `EXP-${faker.string.alphanumeric(5).toUpperCase()}`,
+          supplierId: dbSuppliers[1].id,
+          quantity: 200,
+          originalQuantity: 500,
+          expiryDate: new Date(new Date().setDate(new Date().getDate() + 15)), // 15 days exp
+          unitCost: 3.50
+      }
+  });
+
+  console.log('Pharmacy Inventory Setup complete.');
+
+  // 9. Diverse Patients
+  console.log('Seeding Comprehensive Patients...');
+  const patientProfiles = [];
+  
+  // Create 30 patients to give real volume, including inactive flags
+  for (let i = 0; i < 30; i++) {
+      const isActive = i < 28; // Last 2 suspended/inactive
+      const userStatus = isActive ? 'ACTIVE' : (i === 28 ? 'INACTIVE' : 'SUSPENDED');
+
+      const email = faker.internet.email({ provider: 'mediconnect.local' }).toLowerCase();
       const user = await prisma.user.upsert({
-          where: { email: r.email },
-          update: {
-              password: hashedPassword,
-              isEmailVerified: true,
-              status: 'ACTIVE'
-          },
+          where: { email },
+          update: {},
           create: {
-              firstName: r.firstName,
-              lastName: r.lastName,
-              email: r.email,
-              phone: `+9477000000${Math.floor(Math.random() * 9)}`, // Random digit
+              firstName: faker.person.firstName(),
+              lastName: faker.person.lastName(),
+              email,
+              phone: faker.phone.number().substring(0, 15),
               password: hashedPassword,
-              isEmailVerified: true,
-              status: 'ACTIVE',
-              roles: {
+              isEmailVerified: isActive,
+              status: userStatus
+          }
+      });
+      
+      const pRole = await prisma.role.findUnique({ where: { name: 'PATIENT' } });
+      const pLink = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: user.id, roleId: pRole.id } } });
+      if (!pLink) await prisma.userRole.create({ data: { userId: user.id, roleId: pRole.id } });
+
+      const patient = await prisma.patient.upsert({
+          where: { patientId: user.id },
+          update: {},
+          create: {
+              patientId: user.id,
+              nic: faker.string.numeric(12),
+              dob: faker.date.birthdate({ min: 5, max: 90, mode: 'age' }),
+              address: faker.location.streetAddress(),
+              gender: faker.helpers.arrayElement(['MALE', 'FEMALE']),
+              bloodType: faker.helpers.arrayElement(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']),
+              allergies: faker.helpers.maybe(() => faker.helpers.arrayElement(['Peanuts', 'Penicillin', 'Dust', 'Latex']), { probability: 0.35 }),
+              conditions: faker.helpers.maybe(() => faker.helpers.arrayElement(['Diabetes Type 2', 'Hypertension', 'Asthma', 'Arthritis']), { probability: 0.4 })
+          }
+      });
+      patientProfiles.push(patient);
+  }
+
+  // 10. Appointments: Historical, Recent, and Upcoming
+  console.log('Generating Appointments & Histories...');
+  const today = new Date();
+
+  // Up Next / In Progress (Today right now)
+  // Generate 15 appointments for today to allow extensive testing
+  for (let i = 0; i < 15; i++) {
+    const aptTime = new Date(today);
+    
+    // Distribute appointments across the current day (from 9 AM to 5 PM)
+    const hourOffset = 9 + Math.floor((i / 15) * 8); 
+    aptTime.setHours(hourOffset, (i % 2 === 0 ? 0 : 30), 0, 0);
+
+    let status = 'PENDING';
+    // Make one of them ready to be triggered
+    if (i === 0) status = 'CONFIRMED'; 
+    if (i === 0) status = 'CONFIRMED'; 
+
+    await prisma.appointment.create({
+        data: {
+            patientId: patientProfiles[i % patientProfiles.length].patientId, 
+            doctorId: dbDoctors[0].doctorId, // Assign all to the primary testing doctor
+            date: aptTime,
+            time: aptTime,
+            status: status
+        }
+    });
+  }
+
+  // Historical Appointments (Past year to Past Month)
+  for(let j=0; j<20; j++) {
+      const historicalDate = faker.date.past({ years: 1, refDate: today });
+      historicalDate.setHours(Math.floor(Math.random()*8) + 9, 0, 0, 0); // Working hours
+      
+      await prisma.appointment.create({
+          data: {
+              patientId: patientProfiles[j % patientProfiles.length].patientId,
+              doctorId: dbDoctors[j % 2].doctorId, // Alternate doctors
+              date: historicalDate,
+              time: historicalDate,
+              status: faker.helpers.arrayElement(['COMPLETED', 'COMPLETED', 'COMPLETED', 'CANCELED'])
+          }
+      });
+  }
+
+  // 11. Lab Reports: Historical & Recent Active
+  await prisma.labReport.createMany({
+    data: [
+        { patientId: patientProfiles[0].patientId, doctorId: dbDoctors[0].doctorId, testType: 'Full Blood Count', status: 'PENDING', priority: 'URGENT', orderedDate: new Date() },
+        { patientId: patientProfiles[2].patientId, doctorId: dbDoctors[1].doctorId, testType: 'Lipid Profile', status: 'PENDING', priority: 'NORMAL', orderedDate: new Date() },
+        // Historical
+        { patientId: patientProfiles[0].patientId, doctorId: dbDoctors[0].doctorId, testType: 'Fasting Blood Sugar', status: 'COMPLETED', priority: 'NORMAL', orderedDate: faker.date.recent({days: 30}), results: 'Glucose levels slightly elevated. Monitor diet.', completedDate: faker.date.recent({days: 28}) },
+        { patientId: patientProfiles[1].patientId, doctorId: dbDoctors[0].doctorId, testType: 'Liver Function Test', status: 'COMPLETED', priority: 'NORMAL', orderedDate: faker.date.recent({days: 60}), results: 'All enzyme levels within normal limits.', completedDate: faker.date.recent({days: 58}) }
+    ]
+  });
+
+  // 12. Pharmacy Bills (Extremely Recent Sales for POS Popular Items Testing)
+  console.log('Generating POS Recent Sales data...');
+  // Force sales in the last 2 hours
+  for(let s=0; s<15; s++) {
+      const twoHoursAgo = new Date(today.getTime() - (2 * 60 * 60 * 1000));
+      // Random slice within last 2 hours
+      const recentDate = new Date(twoHoursAgo.getTime() + Math.random() * (today.getTime() - twoHoursAgo.getTime()));
+      
+      // Amoxicillin & Paracetamol will be top sellers
+      const medsPool = s % 3 === 0 ? dbMedicines : [dbMedicines[0], dbMedicines[1]]; 
+      const med = medsPool[Math.floor(Math.random() * medsPool.length)];
+      
+      const qty = Math.floor(Math.random() * 5) + 2; 
+      const amount = med.price * qty;
+
+      await prisma.bill.create({
+          data: {
+              patientId: patientProfiles[Math.floor(Math.random() * patientProfiles.length)].patientId,
+              invoiceNumber: `INV-${Date.now()}-${s}`,
+              amount: amount,
+              status: 'PAID',
+              type: 'PHARMACY',
+              issuedDate: recentDate,
+              paidDate: recentDate,
+              items: {
                   create: {
-                      role: { connect: { name: r.role } }
+                      medicineId: med.medicineId,
+                      name: med.name,
+                      quantity: qty,
+                      unitPrice: med.price,
+                      totalPrice: amount
                   }
               }
           }
       });
-      console.log(`Created/Updated ${r.role}: ${r.email} / password123`);
   }
 
-  // 5. Create Appointments
-  // Ensure we have IDs
-  if (doctorUser && patientUser) {
-      // Create a few appointments
-      const today = new Date();
-      // Appointment 1: Today, PENDING
-      await prisma.appointment.create({
-          data: {
-              patientId: patientUser.id,
-              doctorId: doctorUser.id,
-              date: today,
-              time: new Date(today.setHours(10, 30, 0, 0)),
-              status: 'PENDING'
+  // 13. Extensive Prescriptions (Various Statuses)
+  // DISPENSED (Historical)
+  await prisma.prescription.create({
+      data: {
+          userId: patientProfiles[0].patientId,
+          notes: 'Completed prescription from last month',
+          status: 'DISPENSED',
+          issuedAt: faker.date.recent({days: 30}),
+          prescriptionItems: {
+              create: [
+                 { medicineId: dbMedicines[0].medicineId, dosage: '500mg', instructions: '1-1-1 after meals' }
+              ]
           }
-      });
-
-      // Appointment 2: Today, PENDING (Up Next?)
-      await prisma.appointment.create({
-        data: {
-            patientId: patientUser.id,
-            doctorId: doctorUser.id,
-            date: today,
-            time: new Date(today.setHours(11, 0, 0, 0)),
-            status: 'PENDING'
-        }
-    });
-
-    console.log('Appointments seeded.');
-  }
-
-  // 6. Seed Medicines
-  const medicines = [
-      { name: 'Amoxicillin 500mg', stock: 100, price: 15.00, categoryId: 1, dosageId: 1 },
-      { name: 'Lisinopril 10mg', stock: 50, price: 10.00, categoryId: 2, dosageId: 1 },
-      { name: 'Metformin 500mg', stock: 200, price: 5.00, categoryId: 3, dosageId: 1 },
-      { name: 'Paracetamol 500mg', stock: 500, price: 2.00, categoryId: 1, dosageId: 1 },
-      { name: 'Atorvastatin 20mg', stock: 80, price: 20.00, categoryId: 2, dosageId: 1 },
-  ];
-  
-  // Seed Categories & Dosage simple (if needed) or just skip relations for now if lenient
-  // For proper seeding, let's create categories
-  const cat = await prisma.medicineCategory.upsert({
-      where: { name: 'Antibiotics' },
-      update: {},
-      create: { name: 'Antibiotics' }
+      }
   });
 
-  const dosage = await prisma.dosageForms.upsert({
-      where: { name: 'Tablet' },
-      update: {},
-      create: { name: 'Tablet', defaultUnit: 'mg' }
+  // REJECTED
+  await prisma.prescription.create({
+      data: {
+          userId: patientProfiles[1].patientId,
+          notes: 'Invalid dosage specified. Return to doctor.',
+          status: 'REJECTED',
+          issuedAt: faker.date.recent({days: 2}),
+          prescriptionItems: {
+              create: [
+                 { medicineId: dbMedicines[2].medicineId, dosage: '2000mg', instructions: 'Too high' }
+              ]
+          }
+      }
   });
 
-  for (const med of medicines) {
-      await prisma.medicine.create({
-          data: {
-              name: med.name,
-              stock: med.stock,
-              price: med.price,
-              categoryId: cat.categoryId,
-              dosageId: dosage.dosageId
+  // PENDING
+  await prisma.prescription.create({
+      data: {
+          userId: patientProfiles[3].patientId,
+          notes: 'Walk-in request',
+          status: 'PENDING',
+          issuedAt: new Date(),
+          prescriptionItems: {
+              create: [
+                 { medicineId: dbMedicines[1].medicineId, dosage: '500mg' },
+                 { medicineId: dbMedicines[3].medicineId, dosage: '100mg' }
+              ]
           }
-      });
-  }
-  console.log('Medicines seeded.');
+      }
+  });
 
-  // 7. Seed More Patients
-  const patientsList = [
-      { firstName: 'Alice', lastName: 'Wonder', email: 'alice@test.com', phone: '+94771111111', nic: '910000000V' },
-      { firstName: 'Bob', lastName: 'Builder', email: 'bob@test.com', phone: '+94772222222', nic: '920000000V' },
-      { firstName: 'Charlie', lastName: 'Chaplin', email: 'charlie@test.com', phone: '+94773333333', nic: '930000000V' },
-      { firstName: 'David', lastName: 'Beckham', email: 'david@test.com', phone: '+94774444444', nic: '940000000V' },
-      { firstName: 'Eve', lastName: 'Polastri', email: 'eve@test.com', phone: '+94775555555', nic: '950000000V' },
-  ];
-
-  for (const p of patientsList) {
-      const u = await prisma.user.upsert({
-          where: { email: p.email },
-          update: {},
-          create: {
-              firstName: p.firstName,
-              lastName: p.lastName,
-              email: p.email,
-              phone: p.phone,
-              password: hashedPassword,
-              isEmailVerified: true,
-              status: 'ACTIVE',
-              roles: { create: { role: { connect: { name: 'PATIENT' } } } }
-          }
-      });
-      
-      await prisma.patient.upsert({
-          where: { patientId: u.id },
-          update: {},
-          create: {
-              patientId: u.id,
-              nic: p.nic,
-              dob: new Date('1990-01-01'),
-              address: 'Unknown Address',
-              gender: 'MALE' // Simplified
-          }
-      });
-  }
-  console.log('Additional Patients seeded.');
-
-  // 8. Seed Lab Reports & Bills for MLT/Receptionist
-  // Use existing patientUser
-  if (patientUser) {
-      await prisma.labReport.create({
-          data: {
-              patientId: patientUser.id,
-              testType: 'Full Blood Count',
-              status: 'PENDING',
-              priority: 'NORMAL',
-              orderedDate: new Date(),
-          }
-      });
-
-      await prisma.bill.create({
-          data: {
-              patientId: patientUser.id,
-              invoiceNumber: 'INV-001',
-              amount: 1500.00,
-              status: 'PENDING',
-              type: 'LAB_TEST',
-              description: 'Full Blood Count Fee'
-          }
-      });
-      console.log('Lab Reports and Bills seeded.');
-  }
-
-  // 9. Seed Prescriptions & Notifications (Linking Medicines to Patients)
-  if (patientUser) {
-      // 9.1 Prescriptions
-      // Prescription 1: PENDING
-      await prisma.prescription.create({
-          data: {
-              userId: patientUser.id,
-              appointmentId: null, // Direct prescription or link to existing appt if you fetch it
-              status: 'PENDING',
-              notes: 'Take with food',
-              prescriptionItems: {
-                  create: [
-                      { medicineName: 'Amoxicillin 500mg', dosage: '500mg', duration: new Date(new Date().setDate(new Date().getDate() + 7)), instructions: 'Twice daily' },
-                      { medicineName: 'Paracetamol 500mg', dosage: '500mg', instructions: 'As needed for pain' }
-                  ]
-              }
-          }
-      });
-
-      // Prescription 2: READY (for Pharmacist to see)
-      await prisma.prescription.create({
-          data: {
-              userId: patientUser.id,
-              status: 'READY',
-              notes: 'Patient can pick up',
-              prescriptionItems: {
-                  create: [
-                      { medicineName: 'Lisinopril 10mg', dosage: '10mg', instructions: 'Once daily' }
-                  ]
-              }
-          }
-      });
-      console.log('Prescriptions seeded.');
-
-      // 9.2 Notifications
-      await prisma.notification.createMany({
-          data: [
-              { userId: patientUser.id, message: 'Your appointment is confirmed for tomorrow.', isRead: false },
-              { userId: patientUser.id, message: 'Your prescription #1234 is ready for pickup.', isRead: true },
-              { userId: patientUser.id, message: 'Lab results are available.', isRead: false }
-          ]
-      });
-      console.log('Notifications seeded.');
-  }
-
-  console.log('Database seeded successfully');
+  console.log('Comprehensive Seeding execution finished!');
 }
 
 main()
   .catch((e) => {
-      console.error(e);
-      process.exit(1);
+    console.error(e);
+    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

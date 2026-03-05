@@ -6,9 +6,9 @@ import { getMe } from "../api/authApi";
 import type { User } from "../types";
 
 type AuthContextType = {
-
   user: User | null;
   setUser: (user: User | null) => void;
+  logout: () => void;
 }
 
 
@@ -43,9 +43,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   if (loading) return <Spinner />; // or spinner
 
+  const logout = async () => {
+      try {
+          const { logoutUser } = await import("../api/authApi");
+          await logoutUser(); 
+      } catch(e) { console.error("Logout failed", e); }
+      setUser(null);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, setUser }}>
+    <AuthContext.Provider value={{ user, setUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

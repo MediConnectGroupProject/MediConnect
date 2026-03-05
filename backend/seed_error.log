@@ -1,0 +1,21 @@
+
+> mediconnect-api@1.0.0 db:seed
+> node prisma/seed.js
+
+Starting comprehensive seed...
+System settings initialized.
+Roles seeded.
+PrismaClientKnownRequestError: 
+Invalid `prisma.user.upsert()` invocation:
+
+
+The provided value for the column is too long for the column's type. Column: (not available)
+    at $n.handleRequestError (D:\BSE OUSL\Level 4\SEM I\Software Project in Group\mediConnectNew\MediConnect\backend\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\BSE OUSL\Level 4\SEM I\Software Project in Group\mediConnectNew\MediConnect\backend\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\BSE OUSL\Level 4\SEM I\Software Project in Group\mediConnectNew\MediConnect\backend\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\BSE OUSL\Level 4\SEM I\Software Project in Group\mediConnectNew\MediConnect\backend\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async main (file:///D:/BSE%20OUSL/Level%204/SEM%20I/Software%20Project%20in%20Group/mediConnectNew/MediConnect/backend/prisma/seed.js:68:23) {
+  code: 'P2000',
+  clientVersion: '5.22.0',
+  meta: { modelName: 'User', column_name: '(not available)' }
+}

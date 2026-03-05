@@ -5,7 +5,16 @@ import {
     getAllRoles,
     changeRoleStatus,
     addRole,
-    changeUserStatus
+    changeUserStatus,
+    getAdminDashboardStats,
+    createUser,
+    deleteUser,
+    removeRole,
+    // Supplier Imports
+    getAllSuppliers,
+    addSupplier,
+    updateSupplier,
+    updateSupplierStatus
 } from "../api/adminUsersApi";
 import {
     useMutation,
@@ -13,8 +22,19 @@ import {
     useQueryClient
 } from "@tanstack/react-query";
 
+// get dashboard stats
+export const useAdminStats = () => {
+    return useQuery({
+        queryKey: ['adminStats'],
+        queryFn: getAdminDashboardStats,
+        staleTime: 1000 * 60 * 5, // 5 mins
+        retry: 1,
+        refetchOnWindowFocus: false,
+    });
+}
+
 // get user count
-export const userCount = () => {
+export const useUserCount = () => {
 
     return useQuery({
         queryKey: ['userCount'],
@@ -26,11 +46,11 @@ export const userCount = () => {
 }
 
 // get all users
-export const allUsers = (page: number, limit: number, search: string) => {
+export const useAllUsers = (page: number, limit: number, search: string, type?: 'internal' | 'external') => {
 
     return useQuery({
-        queryKey: ['users', page, limit, search],
-        queryFn: () => getAllUsers(page, limit, search),
+        queryKey: ['users', page, limit, search, type],
+        queryFn: () => getAllUsers(page, limit, search, type),
         staleTime: 1000 * 60 * 5,
         retry: 1,
         refetchOnWindowFocus: false,
@@ -39,7 +59,7 @@ export const allUsers = (page: number, limit: number, search: string) => {
 }
 
 // get all roles
-export const allRoles = () => {
+export const useAllRoles = () => {
 
     return useQuery({
         queryKey: ['roles'],
@@ -51,7 +71,7 @@ export const allRoles = () => {
 }
 
 // update role status
-export const updateRoleMutation = () => {
+export const useUpdateRoleMutation = () => {
     const queryClient = useQueryClient()
 
     return useMutation({
@@ -113,7 +133,7 @@ export const updateRoleMutation = () => {
 }
 
 // add role
-export const addRoleMutation = () => {
+export const useAddRoleMutation = () => {
 
     const queryClient = useQueryClient();
 
@@ -138,7 +158,7 @@ export const addRoleMutation = () => {
 }
 
 // update user state
-export const updateUserStateMutation = () => {
+export const useUpdateUserStateMutation = () => {
 
     const queryClient = useQueryClient();
 
@@ -161,3 +181,111 @@ export const updateUserStateMutation = () => {
         },
     })
 }
+
+// create user
+export const useCreateUser = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (userData: any) => createUser(userData),
+        onSuccess: (data) => {
+            toast.success(data?.message || "User created successfully");
+            // Invalidate both internal and external user lists
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to create user");
+        }
+    });
+}
+
+// delete user
+export const useDeleteUser = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (userId: string) => deleteUser(userId),
+        onSuccess: (data) => {
+            toast.success(data?.message || "User deleted successfully");
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+            queryClient.invalidateQueries({ queryKey: ["adminStats"] });
+            queryClient.invalidateQueries({ queryKey: ["userCount"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to delete user");
+        }
+    });
+}
+
+// remove role
+export const useRemoveRole = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ roleId, userId }: { roleId: number, userId: string }) => removeRole(roleId, userId),
+        onSuccess: (data) => {
+            toast.success(data?.message || "Role removed successfully");
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to remove role");
+        }
+    });
+}
+
+// ==== SUPPLY CHAIN HOOKS ====
+
+export const useAllSuppliers = () => {
+    return useQuery({
+        queryKey: ['suppliers'],
+        queryFn: getAllSuppliers,
+        staleTime: 1000 * 60 * 5, // 5 mins
+        retry: 1,
+        refetchOnWindowFocus: false,
+    });
+};
+
+export const useAddSupplier = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (supplierData: any) => addSupplier(supplierData),
+        onSuccess: (data) => {
+            toast.success(data?.message || "Supplier added successfully");
+            queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to add supplier");
+        }
+    });
+};
+
+export const useUpdateSupplier = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, updateData }: { id: string, updateData: any }) => updateSupplier(id, updateData),
+        onSuccess: (data) => {
+            toast.success(data?.message || "Supplier updated successfully");
+            queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to update supplier");
+        }
+    });
+};
+
+export const useUpdateSupplierStatus = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, isActive }: { id: string, isActive: boolean }) => updateSupplierStatus(id, isActive),
+        onSuccess: (data) => {
+            toast.success(data?.message || "Supplier status changed");
+            queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "Failed to update supplier status");
+        }
+    });
+};

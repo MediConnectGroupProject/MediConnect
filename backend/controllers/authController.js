@@ -10,6 +10,7 @@ import {
 import {
     getPrimaryRole
 } from '../utils/getPrimaryRole.js';
+import { logAction } from '../utils/auditUtils.js';
 
 // User registration
 const register = async (req, res) => {
@@ -31,10 +32,32 @@ const register = async (req, res) => {
     });
 
     if (userExists) {
-
         return res.status(400).json({
             message: 'User already exists'
         });
+    }
+
+    // Check Registration Enabled Setting
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings && !settings.registrationEnabled) {
+         // Allow only if first user (super admin fallback) or specific bypass logic? 
+         // For now, strict block.
+         // Actually, if it's an admin creating via Admin Portal, they use a different route usually?
+         // This 'register' endpoint is public. So we block it.
+         return res.status(403).json({
+             message: 'New registrations are currently disabled by the administrator.'
+         });
+    }
+
+    // Check Password Policy
+    if (settings && settings.enforceStrongPassword) {
+        // Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+        const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!strongPasswordRegex.test(password)) {
+            return res.status(400).json({
+                message: 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
+            });
+        }
     }
 
     // Hash the password
@@ -98,14 +121,15 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     const {
         email,
-        password
+        password,
+        selectedRole
     } = req.body;
 
     // check user exists by email
     const user = await prisma.user.findFirst({
         where: {
             email: email,
-            status: 'ACTIVE',
+            // Status check moved below for specific messages
         },
         include: {
             roles: {
@@ -120,43 +144,127 @@ const login = async (req, res) => {
     });
 
     if (!user) {
+        await logAction({
+             action: 'LOGIN_FAILED',
+             details: `Invalid email attempt: ${email}`,
+             req,
+             status: 'FAILED'
+        });
         return res.status(401).json({
-
             message: 'Invalid credentials'
         });
+    }
+
+    // Check account status
+    if (user.status === 'SUSPENDED') {
+        return res.status(403).json({
+            message: 'Account Suspended'
+        });
+    }
+
+    if (user.status === 'INACTIVE') {
+        return res.status(403).json({
+            message: 'Account currently in Inactive status'
+        });
+    }
+
+    // Check Maintenance Mode
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings && settings.maintenanceMode) {
+        // Allow ADMINS only
+        const isAdmin = user.roles.some(r => r.role.name === 'ADMIN');
+        if (!isAdmin) {
+             return res.status(503).json({
+                 message: 'System is currently under maintenance. Please try again later.'
+             });
+        }
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-
-        return res.status(400).json({
-
+         await logAction({
+             userId: user.id,
+             action: 'LOGIN_FAILED',
+             details: 'Incorrect password',
+             req,
+             status: 'FAILED'
+        });
+         return res.status(400).json({
             message: 'Invalid credentials'
         });
     }
 
     // Check if email is verified
     if (!user.isEmailVerified) {
-
         return res.status(403).json({
             message: 'Please verify your email before logging in'
         });
     }
 
+    // --- Role Selection Logic ---
+    const activeRoles = user.roles.map(r => r.role.name);
+
+    if (activeRoles.length === 0) {
+        return res.status(403).json({
+            message: 'No active roles assigned. Contact support.'
+        });
+    }
+
+    // If multiple roles and no selection made yet
+    // Ensure selectedRole is treated as string and trimmed
+    const chosenRole = selectedRole ? String(selectedRole).trim() : null;
+
+    if (activeRoles.length > 1 && !chosenRole) {
+        return res.status(200).json({
+            action: 'SELECT_ROLE',
+            message: 'Please select a role to continue',
+            roles: activeRoles
+        });
+    }
+
+    let primaryRole;
+
+    if (activeRoles.length === 1) {
+        primaryRole = activeRoles[0];
+    } else {
+        // Multiple roles AND selection provided
+        // Case-insensitive check
+        const matchedRole = activeRoles.find(r => r.toUpperCase() === chosenRole.toUpperCase());
+        
+        if (!matchedRole) {
+             console.log(`Role mismatch! Active: ${activeRoles}, Chosen: ${chosenRole}`);
+             return res.status(400).json({
+                message: `Invalid role selection. Available: ${activeRoles.join(', ')}`
+            });
+        }
+        primaryRole = matchedRole; // Use the exact casing from DB
+    }
+
     // Generate auth token
-    const roleNames = user.roles.map(r => r.role.name);
-    const primaryRole = getPrimaryRole(roleNames);
+    const roleNames = activeRoles; // Keep all roles in token for reference, but primary determines dashboard access
+    
+    // Note: getPrimaryRole utility might be used elsewhere, but here we explicitly set it based on selection
 
     const tokenData = {
         id: user.id,
-        role: roleNames, // token uses flattened roles usually
+        role: roleNames, 
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        currentRole: primaryRole,
+        tokenVersion: user.tokenVersion || 0 // Include version
     };
     const token = generateAuthToken(tokenData, res);
+
+    // Audit Log: Success
+    await logAction({
+        userId: user.id,
+        action: 'LOGIN_SUCCESS',
+        details: `User logged in as ${primaryRole}`,
+        req
+    });
 
     return res.status(200).json({
 
@@ -165,6 +273,7 @@ const login = async (req, res) => {
             id: user.id,
             email: user.email,
             roles: roleNames,
+            name: `${user.firstName} ${user.lastName}`,
             firstName: user.firstName,
             lastName: user.lastName,
             primaryRole: primaryRole
@@ -181,6 +290,15 @@ const logout = async (req, res) => {
         sameSite: 'lax',
         maxAge: new Date(0)
     });
+
+    if (req.user) {
+        await logAction({
+            userId: req.user.id,
+            action: 'LOGOUT_SUCCESS',
+            details: 'User logged out',
+            req
+        });
+    }
 
     return res.status(200).json({
 
@@ -246,7 +364,7 @@ const getMe = async (req, res) => {
             email: req.user.email,
             roles: req.user.roles,
             name: req.user.firstName + ' ' + req.user.lastName,
-            primaryRole: getPrimaryRole(req.user.roles),
+            primaryRole: req.user.currentRole || getPrimaryRole(req.user.roles),
         },
     });
 };
