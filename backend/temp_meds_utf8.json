@@ -1,0 +1,107 @@
+[
+  {
+    "medicineId": "51722631-e4b2-46fc-9c74-9144d3bdc97e",
+    "name": "Amoxicillin",
+    "description": null,
+    "price": "25",
+    "stock": 850,
+    "categoryId": 3,
+    "dosageId": 1,
+    "allowSplit": true,
+    "medicineCategory": {
+      "categoryId": 3,
+      "name": "Cardiovascular",
+      "description": null
+    }
+  },
+  {
+    "medicineId": "0f0e8d70-afc1-45b5-ac80-ce045afa51c9",
+    "name": "Amoxicillin",
+    "description": null,
+    "price": "25",
+    "stock": 600,
+    "categoryId": 2,
+    "dosageId": 1,
+    "allowSplit": true,
+    "medicineCategory": {
+      "categoryId": 2,
+      "name": "Analgesics",
+      "description": null
+    }
+  },
+  {
+    "medicineId": "e25ce7c2-2b69-4dff-bb09-d26697a0ee2a",
+    "name": "Amoxicillin 500mg",
+    "description": null,
+    "price": "25",
+    "stock": 1470,
+    "categoryId": 4,
+    "dosageId": 1,
+    "allowSplit": true,
+    "medicineCategory": {
+      "categoryId": 4,
+      "name": "Supplements",
+      "description": null
+    }
+  },
+  {
+    "medicineId": "49db5b82-bd30-4800-9cb0-502ae8d0d438",
+    "name": "Amoxicillin",
+    "description": null,
+    "price": "25",
+    "stock": 850,
+    "categoryId": 1,
+    "dosageId": 1,
+    "allowSplit": true,
+    "medicineCategory": {
+      "categoryId": 1,
+      "name": "Antibiotics",
+      "description": null
+    }
+  },
+  {
+    "medicineId": "c09df753-95db-48d5-bd80-18543c9846bf",
+    "name": "Amoxicillin",
+    "description": null,
+    "price": "25",
+    "stock": 700,
+    "categoryId": 3,
+    "dosageId": 1,
+    "allowSplit": true,
+    "medicineCategory": {
+      "categoryId": 3,
+      "name": "Cardiovascular",
+      "description": null
+    }
+  },
+  {
+    "medicineId": "06805723-332a-4b11-9b01-0eb7a4fe4b5f",
+    "name": "Amoxicillin",
+    "description": null,
+    "price": "25",
+    "stock": 7,
+    "categoryId": 4,
+    "dosageId": 1,
+    "allowSplit": true,
+    "medicineCategory": {
+      "categoryId": 4,
+      "name": "Supplements",
+      "description": null
+    }
+  },
+  {
+    "medicineId": "e4470370-85c0-4b1c-b077-c1fdae5b9c8b",
+    "name": "Amoxicillin",
+    "description": null,
+    "price": "25",
+    "stock": 155,
+    "categoryId": 3,
+    "dosageId": 1,
+    "allowSplit": true,
+    "medicineCategory": {
+      "categoryId": 3,
+      "name": "Cardiovascular",
+      "description": null
+    }
+  }
+]

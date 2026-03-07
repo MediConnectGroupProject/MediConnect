@@ -133,6 +133,16 @@ export const addMedicineSchema = z.object({
             .trim()
             .max(1000, 'Description must be less than 1000 characters')
             .optional(),
+        brand: z
+            .string()
+            .trim()
+            .max(200, 'Brand must be less than 200 characters')
+            .optional(),
+        strength: z
+            .string()
+            .trim()
+            .max(100, 'Strength must be less than 100 characters')
+            .optional(),
         price: z
             .coerce
             .number()
@@ -170,6 +180,16 @@ export const updateMedicineSchema = z.object({
             .string()
             .trim()
             .max(1000, 'Description must be less than 1000 characters')
+            .optional(),
+        brand: z
+            .string()
+            .trim()
+            .max(200, 'Brand must be less than 200 characters')
+            .optional(),
+        strength: z
+            .string()
+            .trim()
+            .max(100, 'Strength must be less than 100 characters')
             .optional(),
         price: z
             .coerce

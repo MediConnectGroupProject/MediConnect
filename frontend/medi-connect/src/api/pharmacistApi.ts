@@ -83,7 +83,7 @@ export const getInventory = async (page: number, limit: number, search: string, 
     }
 
     if (search) {
-        urlParams.append('search', encodeURIComponent(search));
+        urlParams.append('search', search);
     }
     
     // @ts-ignore
