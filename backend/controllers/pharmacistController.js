@@ -283,7 +283,7 @@ export const getCategory = async (req, res) => {
 export const addMedicine = async (req, res, next) => {
     try {
         const { 
-            name, description, price, categoryId, dosageId,
+            name, brand, strength, description, price, categoryId, dosageId,
             supplierId, batchNumber, quantity, costPrice, manufacturedDate, expiryDate
         } = req.body;
 
@@ -308,6 +308,18 @@ export const addMedicine = async (req, res, next) => {
             return res.status(404).json({ message: 'Dosage not found' });
         }
 
+        // Check for duplicates
+        const existingMedicine = await prisma.medicine.findFirst({
+            where: { 
+                name: { equals: name, mode: 'insensitive' },
+                brand: brand || null,
+                strength: strength || null
+            }
+        });
+        if (existingMedicine) {
+            return res.status(400).json({ message: 'A medicine with this exact Name, Brand, and Strength already exists.' });
+        }
+
         const hasInitialStock = batchNumber && quantity && expiryDate;
 
         const result = await prisma.$transaction(async (tx) => {
@@ -315,6 +327,8 @@ export const addMedicine = async (req, res, next) => {
             const medicine = await tx.medicine.create({
                 data: {
                     name,
+                    brand: brand || null,
+                    strength: strength || null,
                     description,
                     price,
                     categoryId,
@@ -365,7 +379,7 @@ export const addMedicine = async (req, res, next) => {
 export const updateMedicine = async (req, res) => {
 
     const { medicineId } = req.params;
-    const { name, description, price, categoryId, dosageId } = req.body;
+    const { name, brand, strength, description, price, categoryId, dosageId } = req.body;
 
     // validate availability of req data
     const isAvailable = await prisma.medicine.findUnique({
@@ -403,6 +417,8 @@ export const updateMedicine = async (req, res) => {
         where: { medicineId },
         data: {
             name,
+            brand: brand || null,
+            strength: strength || null,
             description,
             price,
             categoryId,

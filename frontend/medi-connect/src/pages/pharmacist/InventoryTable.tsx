@@ -7,6 +7,8 @@ import { PackageOpen, AlertTriangle, AlertCircle, PlusCircle, Pencil } from 'luc
 interface Medicine {
     medicineId: string;
     name: string;
+    brand?: string;
+    strength?: string;
     category?: string | { name: string };
     dosage?: string | { name: string };
     price: number;
@@ -52,7 +54,10 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onEditMed
                         ) : items.map((item) => (
                             <tr key={item.medicineId} className="bg-white hover:bg-gray-50/50 transition-colors">
                                 <td className="px-6 py-4">
-                                    <div className="font-semibold text-gray-900">{item.name}</div>
+                                    <div className="font-semibold text-gray-900">
+                                        {item.name} {item.strength && <span className="text-gray-500 font-normal ml-1">{item.strength}mg</span>}
+                                    </div>
+                                    {item.brand && <div className="text-xs text-blue-600 mt-0.5 font-medium">{item.brand}</div>}
                                     <div className="text-xs text-gray-500 mt-1">ID: {item.medicineId.substring(0,8)}</div>
                                 </td>
                                 <td className="px-6 py-4">

@@ -147,6 +147,8 @@ model DosageForms {
 model Medicine {
   medicineId  String  @id @default(uuid())
   name        String  @db.VarChar(200)
+  brand       String? @db.VarChar(200)
+  strength    String? @db.VarChar(100)
   description String? @db.VarChar(200)
   price       Decimal @db.Decimal(10, 2)
   stock       Int     @default(0)
@@ -344,7 +346,7 @@ enum BillType {
 
 model Bill {
   billId        String   @id @default(uuid())
-  patientId     String
+  patientId     String?
   invoiceNumber String   @unique // e.g. INV-2024-001
   amount        Decimal  @db.Decimal(10, 2)
   status        PaymentStatus @default(PENDING)
@@ -353,7 +355,7 @@ model Bill {
   issuedDate    DateTime @default(now())
   paidDate      DateTime?
   
-  patient       Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  patient       Patient?  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
   items         BillItem[]
 }
 

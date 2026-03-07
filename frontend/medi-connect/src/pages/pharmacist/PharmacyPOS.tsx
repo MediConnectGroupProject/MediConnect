@@ -1,12 +1,23 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Search, ShoppingCart, Trash2, CreditCard, Plus, Minus, Printer } from 'lucide-react';
-import { getInventory, processSale } from '../../api/pharmacistApi';
+import { processSale } from '../../api/pharmacistApi';
+import { usePosInventory } from '../../hooks/pharmacistHook';
 import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
+
+// Custom debounce hook to delay rapid API calls
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState<T>(value);
+    useEffect(() => {
+        const handler = setTimeout(() => setDebouncedValue(value), delay);
+        return () => clearTimeout(handler);
+    }, [value, delay]);
+    return debouncedValue;
+}
 
 
 interface CartItem {
@@ -15,84 +26,22 @@ interface CartItem {
     price: number;
     quantity: number;
     maxStock: number;
+    brand?: string;
+    strength?: string;
     unit?: string;
 }
 
 export function PharmacyPOS() {
-    const [inventory, setInventory] = useState<any[]>([]);
     const [cart, setCart] = useState<CartItem[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(false);
+    const debouncedSearch = useDebounce(searchQuery, 400); // 400ms delay
+
     const [processing, setProcessing] = useState(false);
-    const [receiptData, setReceiptData] = useState<any>(null); // For Receipt Modal
+    const [receiptData, setReceiptData] = useState<any>(null);
 
-
-    // Initial Load
-    useEffect(() => {
-        loadInventory();
-    }, []);
-
-    const loadInventory = async () => {
-        setLoading(true);
-        try {
-            const data = await getInventory(1, 1000, '', true); // Load popular items by default
-            // If user searches, we should probably toggle 'popular' off in a real app, 
-            // but for now keeping it simple as per request to just have default view.
-            
-            // Backend returns { } or [] depending on implementation. 
-            // Previous check showed `return res.json()` which is array from `getInventoryWithBatches`.
-            // But `getInventory` in frontend handles page/limit? No, I overwrote it to use simple fetch?
-            // Wait, I overwrote `getInventory` in `pharmacistApi.ts` to use simple fetch.
-            setInventory(Array.isArray(data) ? data : data.data || []);
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to load inventory");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const filteredInventory = useMemo(() => {
-        if (!searchQuery) return inventory;
-        // If searching, we realistically need to fetch from backend if we only loaded top 10.
-        // But if we loaded all (which we aren't anymore), this works.
-        // TODO: ideally search triggers backend. 
-        // For this task, assuming the user is okay with clientside filter OR we should trigger search.
-        // Given the code structure, I'll stick to client side for now but note that 
-        // if `inventory` only has 10 items, search is limited. 
-        // To fix this properly, `searchQuery` change should trigger `loadInventory`.
-        
-        return inventory.filter(item => 
-            item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-            item.category?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [inventory, searchQuery]);
-    
-    // Better Approach: Trigger fetch on search. Since I can't easily refactor the whole component state machine in one go without potential regression
-    // I will add a side effect to reload when search changes if needed, but the prompt asked for "Top 10" by default.
-    // Let's modify the useEffect to depend on search query?
-    // Actually, line 37 loads "popular". If I type, I want "all matching". 
-    // Let's update useEffect:
-    
-    useEffect(() => {
-        const fetch = async () => {
-             setLoading(true);
-             try {
-                // If search query is present, fetch ALL matching (popular=false)
-                // If empty, fetch POPULAR (popular=true)
-                const isRobustSearch = searchQuery.length > 0;
-                const data = await getInventory(1, 1000, searchQuery, !isRobustSearch);
-                setInventory(Array.isArray(data) ? data : data.data || []);
-             } catch {
-                 toast.error("Failed to load inventory");
-             } finally {
-                 setLoading(false);
-             }
-        }
-        // Debounce simple implementation
-        const timeoutId = setTimeout(() => fetch(), 500);
-        return () => clearTimeout(timeoutId);
-    }, [searchQuery]);
+    // Optimized API fetch that handles empty term as 'popular items'
+    const { data: inventoryData, isLoading: loading, refetch: reloadInventory } = usePosInventory(debouncedSearch);
+    const inventory = inventoryData || [];
 
     // Cart Actions
     const addToCart = (item: any) => {
@@ -119,6 +68,8 @@ export function PharmacyPOS() {
                 price: parseFloat(item.price),
                 quantity: 1,
                 maxStock: item.stock,
+                brand: item.brand,
+                strength: item.strength,
                 unit: item.dosage || 'unit'
             }];
         });
@@ -176,7 +127,7 @@ export function PharmacyPOS() {
             });
 
             setCart([]);
-            loadInventory(); // Refresh stock
+            reloadInventory(); // Refresh stock data from backend using react-query
         } catch (error: any) {
             toast.error(error.message || "Checkout failed");
         } finally {
@@ -207,19 +158,22 @@ export function PharmacyPOS() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                            {filteredInventory.map((item: any) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 min-h-[500px] content-start">
+                            {inventory.map((item: any) => (
                                 <div 
                                     key={item.medicineId} 
                                     className="border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer bg-white"
                                     onClick={() => addToCart(item)}
                                 >
                                     <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-semibold text-sm line-clamp-1" title={item.name}>{item.name}</h3>
+                                        <h3 className="font-semibold text-sm line-clamp-1" title={item.name}>
+                                            {item.name} {item.strength && <span className="text-gray-500 font-normal ml-1">{item.strength}mg</span>}
+                                        </h3>
                                         <Badge variant={item.stock > 10 ? "outline" : "destructive"} className="text-xs">
                                             {item.stock} left
                                         </Badge>
                                     </div>
+                                    {item.brand && <div className="text-xs text-blue-600 mb-1">{item.brand}</div>}
                                     <div className="text-xs text-gray-500 mb-2">{item.category}</div>
                                     <div className="flex justify-between items-end">
                                         <div className="font-bold text-lg text-green-600">
@@ -231,9 +185,9 @@ export function PharmacyPOS() {
                                     </div>
                                 </div>
                             ))}
-                            {filteredInventory.length === 0 && !loading && (
+                            {inventory.length === 0 && !loading && (
                                 <div className="col-span-full text-center py-10 text-gray-500">
-                                    No medicines found.
+                                    No medicines found in active inventory.
                                 </div>
                             )}
                         </div>
@@ -242,9 +196,9 @@ export function PharmacyPOS() {
             </div>
 
             {/* Right Col: Cart */}
-            <div className="col-span-4 flex flex-col gap-4 sticky top-4">
-                <Card className="flex flex-col shadow-lg border-blue-100 max-h-[calc(100vh-2rem)] overflow-hidden">
-                    <CardHeader className="bg-blue-50 py-4 border-b">
+            <div className="col-span-4 sticky top-4 self-start">
+                <Card className="flex flex-col shadow-lg border-blue-100 h-[calc(100vh-2rem)]">
+                    <CardHeader className="bg-blue-50 py-4 border-b flex-shrink-0">
                         <CardTitle className="flex items-center gap-2 text-lg">
                             <ShoppingCart className="h-5 w-5 text-blue-600" />
                             Current Sale
@@ -261,7 +215,10 @@ export function PharmacyPOS() {
                             cart.map(item => (
                                 <div key={item.medicineId} className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
                                     <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-sm truncate">{item.name}</div>
+                                        <div className="font-medium text-sm truncate">
+                                            {item.name} {item.strength && <span className="text-gray-500 font-normal">{item.strength}mg</span>}
+                                        </div>
+                                        {item.brand && <div className="text-xs text-blue-600">{item.brand}</div>}
                                         <div className="text-xs text-gray-500">
                                             ${item.price} x {item.quantity} {item.unit}s
                                         </div>

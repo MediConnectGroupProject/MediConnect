@@ -74,6 +74,17 @@ export const getInventoryWithBatches = async (req, res) => {
         let orderByClause = { name: 'asc' };
         let takeClause = undefined;
 
+        // --- SEARCH LOGIC ---
+        if (req.query.search) {
+            whereClause = {
+                OR: [
+                    { name: { contains: req.query.search, mode: 'insensitive' } },
+                    { brand: { contains: req.query.search, mode: 'insensitive' } },
+                    { medicineCategory: { name: { contains: req.query.search, mode: 'insensitive' } } }
+                ]
+            };
+        }
+
         // --- POPULAR ITEMS LOGIC ---
         if (req.query.popular === 'true') {
             const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
@@ -135,6 +146,8 @@ export const getInventoryWithBatches = async (req, res) => {
             return {
                 medicineId: med.medicineId,
                 name: med.name,
+                brand: med.brand,
+                strength: med.strength,
                 description: med.description,
                 price: med.price,
                 stock: totalStock, // Calculated!

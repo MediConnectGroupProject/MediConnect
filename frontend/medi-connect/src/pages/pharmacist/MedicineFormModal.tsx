@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 interface Medicine {
     medicineId?: string;
     name: string;
+    brand?: string;
+    strength?: string;
     description?: string;
     categoryId: string;
     dosageId: string;
@@ -31,6 +33,8 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
     
     const [formData, setFormData] = useState({
         name: '',
+        brand: '',
+        strength: '',
         description: '',
         categoryId: '',
         dosageId: '',
@@ -50,6 +54,8 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
             if (editingMedicine) {
                 setFormData({
                     name: editingMedicine.name || '',
+                    brand: editingMedicine.brand || '',
+                    strength: editingMedicine.strength || '',
                     description: editingMedicine.description || '',
                     categoryId: editingMedicine.categoryId || '',
                     dosageId: editingMedicine.dosageId || '',
@@ -58,7 +64,7 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
                 });
             } else {
                 setFormData({
-                    name: '', description: '', categoryId: '', dosageId: '', price: '',
+                    name: '', brand: '', strength: '', description: '', categoryId: '', dosageId: '', price: '',
                     supplierId: '', batchNumber: '', quantity: '', costPrice: '', manufacturedDate: '', expiryDate: ''
                 });
             }
@@ -100,6 +106,8 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
         setIsLoading(true);
         const payload: any = {
             name: formData.name,
+            brand: formData.brand || undefined,
+            strength: formData.strength || undefined,
             description: formData.description,
             categoryId: parseInt(formData.categoryId),
             dosageId: parseInt(formData.dosageId),
@@ -147,6 +155,33 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
                             value={formData.name}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
                         />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="brand">Brand / Manufacturer <span className="text-gray-400 font-normal text-xs">(Optional)</span></Label>
+                            <Input 
+                                id="brand" 
+                                placeholder="e.g. Pfizer" 
+                                value={formData.brand}
+                                onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="strength">Strength (mg) <span className="text-gray-400 font-normal text-xs">(Optional)</span></Label>
+                            <div className="relative">
+                                <Input 
+                                    id="strength" 
+                                    type="number"
+                                    min="0"
+                                    placeholder="e.g. 500" 
+                                    value={formData.strength}
+                                    onChange={(e) => setFormData({...formData, strength: e.target.value})}
+                                    className="pr-10"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">mg</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
