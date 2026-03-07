@@ -72,7 +72,7 @@ async function main() {
           firstName: doc.first,
           lastName: doc.last,
           email: doc.email,
-          phone: faker.phone.number(),
+          phone: faker.phone.number().substring(0, 20),
           password: hashedPassword,
           isEmailVerified: true,
           status: 'ACTIVE'
@@ -115,7 +115,7 @@ async function main() {
           firstName: staff.first,
           lastName: staff.last,
           email: staff.email,
-          phone: faker.phone.number(),
+          phone: faker.phone.number().substring(0, 20),
           password: hashedPassword,
           isEmailVerified: true,
           status: 'ACTIVE'
@@ -272,7 +272,42 @@ async function main() {
 
   // 9. Diverse Patients
   console.log('Seeding Comprehensive Patients...');
+
+  // Specific Patient for testing
+  const testPatientEmail = 'patient2@example.com';
+  const testPatientUser = await prisma.user.upsert({
+      where: { email: testPatientEmail },
+      update: { password: hashedPassword, status: 'ACTIVE' },
+      create: {
+          firstName: 'Dushmantha',
+          lastName: 'Patient',
+          email: testPatientEmail,
+          phone: '+94773333333',
+          password: hashedPassword,
+          isEmailVerified: true,
+          status: 'ACTIVE'
+      }
+  });
+
+  const pRoleRef = await prisma.role.findUnique({ where: { name: 'PATIENT' } });
+  const pLinkRef = await prisma.userRole.findUnique({ where: { userId_roleId: { userId: testPatientUser.id, roleId: pRoleRef.id } } });
+  if (!pLinkRef) await prisma.userRole.create({ data: { userId: testPatientUser.id, roleId: pRoleRef.id } });
+
+  await prisma.patient.upsert({
+      where: { patientId: testPatientUser.id },
+      update: {},
+      create: {
+          patientId: testPatientUser.id,
+          nic: '199012345678',
+          dob: new Date('1990-01-01'),
+          address: 'Main Street, Colombo',
+          gender: 'MALE',
+          bloodType: 'O+'
+      }
+  });
+
   const patientProfiles = [];
+  patientProfiles.push({ patientId: testPatientUser.id });
   
   // Create 30 patients to give real volume, including inactive flags
   for (let i = 0; i < 30; i++) {
