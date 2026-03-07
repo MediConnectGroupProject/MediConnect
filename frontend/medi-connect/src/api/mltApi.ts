@@ -12,10 +12,22 @@ export const getLabReportQueue = async () => {
     return res.json();
 }
 
+// Get Completed Lab Reports
+export const getCompletedLabReports = async () => {
+    const res = await fetch(`${API_URL}/reports/completed`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch completed lab reports');
+    return res.json();
+}
+
 // Update Lab Report (Status, Results, Comments)
-export const updateLabReport = async (reportId: string, data: { status?: string, resultData?: string, comments?: string }) => {
+export const updateLabReport = async (reportId: string, data: { status?: string, results?: string, notes?: string }) => {
     const res = await fetch(`${API_URL}/reports/${reportId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
         },
