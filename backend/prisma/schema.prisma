@@ -25,11 +25,11 @@ enum UserStatus {
 }
 
 model User {
-  id        String  @id @default(uuid())
-  firstName String  @db.VarChar(200)
-  lastName  String  @db.VarChar(200)
-  email     String  @unique
-  phone     String? @db.VarChar(20)
+  id        String     @id @default(uuid())
+  firstName String     @db.VarChar(200)
+  lastName  String     @db.VarChar(200)
+  email     String     @unique
+  phone     String?    @db.VarChar(20)
   password  String
   status    UserStatus @default(ACTIVE)
 
@@ -42,13 +42,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  roles         UserRole[]
-  license       License[]
-  prescriptions Prescription[]
-  notifications Notification[]
-  doctors       Doctor[]
-  patients      Patient[]
-  auditLogs     AuditLog[]
+  roles            UserRole[]
+  license          License[]
+  prescriptions    Prescription[]
+  notifications    Notification[]
+  doctors          Doctor[]
+  patients         Patient[]
+  auditLogs        AuditLog[]
   stockAdjustments StockAdjustment[]
 }
 
@@ -95,14 +95,14 @@ enum Gender {
 }
 
 model Patient {
-  patientId String   @id
-  nic       String?   @db.VarChar(12)
-  dob       DateTime @db.Date
-  address   String?   @db.VarChar(200)
-  gender    Gender
-  bloodType String?  @db.VarChar(10)
-  allergies String?  @db.Text
-  conditions String? @db.Text
+  patientId  String   @id
+  nic        String?  @db.VarChar(12)
+  dob        DateTime @db.Date
+  address    String?  @db.VarChar(200)
+  gender     Gender
+  bloodType  String?  @db.VarChar(10)
+  allergies  String?  @db.Text
+  conditions String?  @db.Text
 
   user         User          @relation(fields: [patientId], references: [id], onDelete: Cascade)
   appointments Appointment[]
@@ -162,12 +162,12 @@ model Medicine {
   prescriptionItems PrescriptionItem[]
 
   // New POS Fields
-  allowSplit  Boolean @default(true)
-  
-  batches     Batch[]
-  unitConversions UnitConversion[]
-  suppliers   Supplier[]
-  billItems   BillItem[]
+  allowSplit Boolean @default(true)
+
+  batches          Batch[]
+  unitConversions  UnitConversion[]
+  suppliers        Supplier[]
+  billItems        BillItem[]
   stockAdjustments StockAdjustment[]
 }
 
@@ -180,61 +180,61 @@ model Supplier {
   address       String?
   isActive      Boolean  @default(true)
   licenseNumber String?
-  rating        Int?     // 1 to 5 star rating
+  rating        Int? // 1 to 5 star rating
   notes         String?  @db.Text
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  batches     Batch[]
-  medicines   Medicine[]
+  batches   Batch[]
+  medicines Medicine[]
 }
 
 model Batch {
-  id              String    @id @default(uuid())
-  batchNumber     String
-  medicineId      String
-  medicine        Medicine  @relation(fields: [medicineId], references: [medicineId])
-  supplierId      String?
-  supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  
-  quantity        Int       // Current stock in Base Units (Tablets)
-  originalQuantity Int      // Initial stock
-  
+  id          String    @id @default(uuid())
+  batchNumber String
+  medicineId  String
+  medicine    Medicine  @relation(fields: [medicineId], references: [medicineId])
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+
+  quantity         Int // Current stock in Base Units (Tablets)
+  originalQuantity Int // Initial stock
+
   expiryDate      DateTime
   manufactureDate DateTime?
   unitCost        Decimal   @db.Decimal(10, 2)
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
 
-  stockAdjustments StockAdjustment[]
-  billItems        BillItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stockAdjustments  StockAdjustment[]
+  billItems         BillItem[]
   prescriptionItems PrescriptionItem[]
 }
 
 model UnitConversion {
-  id          String @id @default(uuid())
-  medicineId  String
-  medicine    Medicine @relation(fields: [medicineId], references: [medicineId])
-  unitName    String // "Box", "Card"
-  multiplier  Int    // e.g. 400, 20
-  barcode     String?
+  id         String   @id @default(uuid())
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [medicineId])
+  unitName   String // "Box", "Card"
+  multiplier Int // e.g. 400, 20
+  barcode    String?
 }
 
 model StockAdjustment {
-  id          String   @id @default(uuid())
-  medicineId  String
-  medicine    Medicine @relation(fields: [medicineId], references: [medicineId])
-  batchId     String?
-  
-  batch       Batch?   @relation(fields: [batchId], references: [id])
-  
-  quantity    Int      // Positive (Return) or Negative (Wastage)
-  reason      String   // "RETURN", "EXPIRED", "DAMAGED", "THEFT"
-  notes       String?
-  userId      String   
-  user        User     @relation(fields: [userId], references: [id]) 
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [medicineId])
+  batchId    String?
+
+  batch Batch? @relation(fields: [batchId], references: [id])
+
+  quantity  Int // Positive (Return) or Negative (Wastage)
+  reason    String // "RETURN", "EXPIRED", "DAMAGED", "THEFT"
+  notes     String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
 
 enum changeType {
@@ -251,8 +251,8 @@ model InventoryLogs {
   medicineId     String?
   quantity       Int
   changeType     changeType
-  expiryDate     DateTime?   @db.Date
-  date           DateTime   @db.Date @default(now())
+  expiryDate     DateTime?  @db.Date
+  date           DateTime   @default(now()) @db.Date
   status         Boolean    @default(false) // true check after exp
 
   medicine Medicine? @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)
@@ -262,6 +262,7 @@ model InventoryLogs {
 enum AppointmentStatus {
   PENDING
   CONFIRMED
+  WAITING
   IN_PROGRESS
   COMPLETED
   CANCELED
@@ -279,6 +280,7 @@ model Appointment {
   patient       Patient        @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
   doctor        Doctor         @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade)
   prescriptions Prescription[]
+  bills         Bill[]
 }
 
 // prescription details
@@ -309,16 +311,16 @@ model PrescriptionItem {
   medicineId     String?
   medicineName   String? // if medicineId is null
   dosage         String?   @db.VarChar(100)
-  quantity       Int?      // e.g. 50 (tablets)
-  duration       DateTime? 
+  quantity       Int? // e.g. 50 (tablets)
+  duration       DateTime?
   durationText   String?   @db.VarChar(50) // e.g. "5 days" or "5"
   instructions   String?   @db.Text
 
   prescription Prescription @relation(fields: [prescriptionId], references: [prescriptionId], onDelete: Cascade)
   medicine     Medicine?    @relation(fields: [medicineId], references: [medicineId], onDelete: SetNull)
-  
-  batchId      String?
-  batch        Batch?       @relation(fields: [batchId], references: [id])
+
+  batchId String?
+  batch   Batch?  @relation(fields: [batchId], references: [id])
 }
 
 model Notification {
@@ -348,36 +350,39 @@ enum BillType {
 }
 
 model Bill {
-  billId        String   @id @default(uuid())
+  billId        String        @id @default(uuid())
   patientId     String?
-  invoiceNumber String   @unique // e.g. INV-2024-001
-  amount        Decimal  @db.Decimal(10, 2)
+  invoiceNumber String        @unique // e.g. INV-2024-001
+  amount        Decimal       @db.Decimal(10, 2)
   status        PaymentStatus @default(PENDING)
   type          BillType
-  description   String?  @db.VarChar(200)
-  issuedDate    DateTime @default(now())
+  description   String?       @db.VarChar(200)
+  issuedDate    DateTime      @default(now())
   paidDate      DateTime?
-  
-  patient       Patient?  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
-  items         BillItem[]
+  appointmentId String?
+  paymentMethod String?
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [appointmentId], onDelete: Cascade)
+  patient     Patient?     @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  items       BillItem[]
 }
 
 model BillItem {
-  id          String   @id @default(uuid())
-  billId      String
-  bill        Bill     @relation(fields: [billId], references: [billId], onDelete: Cascade)
-  
-  medicineId  String
-  medicine    Medicine @relation(fields: [medicineId], references: [medicineId])
-  
-  batchId     String?
-  batch       Batch?   @relation(fields: [batchId], references: [id])
-  
-  quantity    Int      // In Base Units
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  totalPrice  Decimal  @db.Decimal(10, 2)
-  
-  name        String   // Snapshot of name
+  id     String @id @default(uuid())
+  billId String
+  bill   Bill   @relation(fields: [billId], references: [billId], onDelete: Cascade)
+
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [medicineId])
+
+  batchId String?
+  batch   Batch?  @relation(fields: [batchId], references: [id])
+
+  quantity   Int // In Base Units
+  unitPrice  Decimal @db.Decimal(10, 2)
+  totalPrice Decimal @db.Decimal(10, 2)
+
+  name String // Snapshot of name
 }
 
 // Lab Reports
@@ -394,19 +399,19 @@ enum PriorityLevel {
 }
 
 model LabReport {
-  reportId    String   @id @default(uuid())
-  patientId   String
-  doctorId    String?
-  testType    String   @db.VarChar(200)
-  status      ReportStatus @default(PENDING)
-  priority    PriorityLevel @default(NORMAL)
-  results     String?  @db.Text
-  notes       String?  @db.Text
-  orderedDate DateTime @default(now())
+  reportId      String        @id @default(uuid())
+  patientId     String
+  doctorId      String?
+  testType      String        @db.VarChar(200)
+  status        ReportStatus  @default(PENDING)
+  priority      PriorityLevel @default(NORMAL)
+  results       String?       @db.Text
+  notes         String?       @db.Text
+  orderedDate   DateTime      @default(now())
   completedDate DateTime?
 
-  patient     Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
-  doctor      Doctor?  @relation(fields: [doctorId], references: [doctorId])
+  patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  doctor  Doctor? @relation(fields: [doctorId], references: [doctorId])
 }
 
 // System Settings
@@ -419,19 +424,19 @@ model SystemSettings {
   emailNotifications  Boolean @default(true)
   smsAlerts           Boolean @default(false)
   autoBackup          Boolean @default(true)
-  
-  hospitalAddress     String  @default("123 Health Avenue, Med City")
-  hospitalPhone       String  @default("+1 (555) 123-4567")
+
+  hospitalAddress String @default("123 Health Avenue, Med City")
+  hospitalPhone   String @default("+1 (555) 123-4567")
 
   // Security Policy
   enforceStrongPassword Boolean @default(false)
-  
-  updatedAt           DateTime @updatedAt
+
+  updatedAt DateTime @updatedAt
 }
 
 model AuditLog {
   id        String   @id @default(uuid())
-  userId    String?  // Nullable if system action or unauthenticated attempt
+  userId    String? // Nullable if system action or unauthenticated attempt
   action    String   @db.VarChar(200) // e.g. "LOGIN", "UPDATE_SETTINGS"
   details   String?  @db.Text
   ipAddress String?  @db.VarChar(50)
@@ -439,5 +444,5 @@ model AuditLog {
   status    String   @default("SUCCESS") // SUCCESS, FAILED
   timestamp DateTime @default(now())
 
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
