@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Calendar, CheckCircle, Undo, Plus, QrCode, Trash, Search, ChevronLeft, ChevronRight, FileText, Download, Loader2 } from 'lucide-react';
+import { Calendar, CheckCircle, Undo, Plus, QrCode, Trash, Search, ChevronLeft, ChevronRight, FileText, Download, Loader2, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../../components/UserProfile';
 import { QRCodeSVG } from 'qrcode.react';
