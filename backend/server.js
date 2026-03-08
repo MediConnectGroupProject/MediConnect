@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from "cors";
+import os from 'os';
 
 import { errorHandler } from './middleware/errorHandlerMiddleware.js';
 import cookieParser from "cookie-parser";
@@ -50,6 +51,22 @@ app.use('/api/pharmacist', pharmacistRoutes);
 app.use('/api/mlt', mltRoutes);
 app.use('/api/receptionist', receptionistRoutes);
 app.use('/api/settings', settingsRoutes);
+
+// Returns the server's LAN IP so the frontend can generate network-accessible QR codes
+app.get('/api/network-host', (req, res) => {
+  const interfaces = os.networkInterfaces();
+  let lanIp = null;
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        lanIp = iface.address;
+        break;
+      }
+    }
+    if (lanIp) break;
+  }
+  res.json({ host: lanIp || 'localhost' });
+});
 
 
 app.use(errorHandler);
