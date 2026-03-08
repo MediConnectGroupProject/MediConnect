@@ -109,7 +109,17 @@ export default function DoctorPortal() {
                          });
                          setWorkingHours(newHours);
                      } else {
-                         setWorkingHours(availData.workingHours);
+                         const safeHours = { ...availData.workingHours };
+                         ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(d => {
+                             if (safeHours[d]) {
+                                 // Auto-heal corrupted days that have active:true but missing time strings
+                                 if (typeof safeHours[d].start !== 'string' || !safeHours[d].start.trim()) safeHours[d].start = '09:00';
+                                 if (typeof safeHours[d].end !== 'string' || !safeHours[d].end.trim()) safeHours[d].end = '17:00';
+                             } else {
+                                 safeHours[d] = { start: '09:00', end: '17:00', active: false };
+                             }
+                         });
+                         setWorkingHours(safeHours);
                      }
                 } else {
                     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -398,14 +408,18 @@ export default function DoctorPortal() {
                                         <Label>Start Time</Label>
                                         <Input type="time" 
                                             value={workingHours[selectedDays[0]]?.start || '09:00'} 
-                                            onChange={e => updateSelectedDays({ start: e.target.value })} 
+                                            onChange={e => {
+                                                if (e.target.value) updateSelectedDays({ start: e.target.value });
+                                            }} 
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>End Time</Label>
                                         <Input type="time" 
                                             value={workingHours[selectedDays[0]]?.end || '17:00'} 
-                                            onChange={e => updateSelectedDays({ end: e.target.value })} 
+                                            onChange={e => {
+                                                if (e.target.value) updateSelectedDays({ end: e.target.value });
+                                            }} 
                                         />
                                     </div>
                                 </div>
@@ -413,14 +427,28 @@ export default function DoctorPortal() {
                         </div>
                         <DialogFooter>
                             <Button onClick={async () => {
+                                // Validate working hours before saving
+                                const activeDays = Object.entries(workingHours).filter(([_, config]) => config.active);
+                                const invalidDays = activeDays.filter(([day, config]) => {
+                                    return typeof config.start !== 'string' || 
+                                           typeof config.end !== 'string' || 
+                                           config.start.trim() === '' || 
+                                           config.end.trim() === '';
+                                });
+
+                                if (invalidDays.length > 0) {
+                                    toast.error(`Please set valid start and end times for: ${invalidDays.map(([day]) => day).join(', ')}`);
+                                    return;
+                                }
+
                                 const toastId = toast.loading('Updating availability...');
                                 try {
                                     const api = await import('../../api/doctorApi');
                                     await api.updateAvailability({ availability: true, workingHours: workingHours });
                                     toast.success('Availability updated successfully', { id: toastId });
                                     setIsAvailabilityOpen(false);
-                                } catch(e) { 
-                                    console.error(e); 
+                                } catch(e) {
+                                    console.error(e);
                                     toast.error('Failed to update availability', { id: toastId });
                                 }
                             }}>Save Changes</Button>
