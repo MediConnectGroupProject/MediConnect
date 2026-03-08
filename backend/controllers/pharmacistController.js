@@ -1,4 +1,5 @@
 import prisma from '../config/connection.js';
+import { createNotification } from '../helpers/notificationHelper.js';
 
 // Get all prescriptions (for verification/dispensing)
 export const getPrescriptionQueue = async (req, res) => {
@@ -51,9 +52,20 @@ export const updatePrescriptionStatus = async (req, res) => {
         data: { status }
     });
 
-    // Use Inventory Logs to deduct stock if dispensed (TODO: Add complex logic later)
     if (status === 'DISPENSED') {
-        // Logic to deduct stock would go here
+        // Notify the patient their medicines are ready for pickup
+        const prescription = await prisma.prescription.findUnique({
+            where: { prescriptionId },
+            select: { userId: true } // userId is the patient's User.id
+        });
+        if (prescription?.userId) {
+            await createNotification(
+                prescription.userId,
+                'DISPENSED',
+                'Your prescription has been dispensed at MediConnect Pharmacy. Please collect your medicines.',
+                prescriptionId
+            );
+        }
     }
 
     res.status(200).json(updated);

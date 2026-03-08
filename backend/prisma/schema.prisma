@@ -274,6 +274,7 @@ model Appointment {
   date          DateTime          @db.Date
   time          DateTime          @db.Time
   status        AppointmentStatus
+  createdAt     DateTime          @default(now())
 
   patient       Patient        @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
   doctor        Doctor         @relation(fields: [doctorId], references: [doctorId], onDelete: Cascade)
@@ -324,6 +325,8 @@ model Notification {
   notificationId String  @id @default(uuid())
   userId         String
   message        String  @db.Text
+  type           String?  // APPOINTMENT_CONFIRMED | PRESCRIPTION_ISSUED | DISPENSED | CONSULTATION_STARTED | APPOINTMENT_CANCELLED
+  referenceId    String?  // appointmentId or prescriptionId for action buttons
   isRead         Boolean @default(false)
 
   created_at DateTime @default(now())
