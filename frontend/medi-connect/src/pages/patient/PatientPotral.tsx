@@ -14,8 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/ta
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "../../components/ui/dialog";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Calendar, Download, Bell, CreditCard, Loader2, CalendarOff, AlertTriangle, CheckCircle2, Pill, Stethoscope, XCircle, Clock } from 'lucide-react';
-import { QRCodeCanvas } from 'qrcode.react';
+import { Calendar, Download, Bell, CreditCard, Loader2, CalendarOff, AlertTriangle, CheckCircle2, Pill, Stethoscope, XCircle, Clock, QrCode } from 'lucide-react';
+import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 
 import {
   getMyAppointments,
@@ -61,6 +61,7 @@ export default function PatientPortal() {
 
   // QR download state — setting this renders a hidden QRCodeCanvas, then the effect captures it
   const [downloadQrId, setDownloadQrId] = useState<string | null>(null);
+  const [viewQrId, setViewQrId] = useState<string | null>(null);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
   // Real LAN IP fetched from backend so QR codes are scannable from phones
   const [networkHost, setNetworkHost] = useState<string>(window.location.hostname);
@@ -269,6 +270,7 @@ export default function PatientPortal() {
     CONSULTATION_STARTED:   { icon: <Stethoscope  className="h-5 w-5 text-blue-600" />,   bg: 'bg-blue-50',   border: 'border-blue-200',  label: 'Consultation Started' },
     APPOINTMENT_CANCELLED:  { icon: <XCircle       className="h-5 w-5 text-red-500" />,    bg: 'bg-red-50',    border: 'border-red-200',   label: 'Appointment Cancelled' },
     PRESCRIPTION_ISSUED:    { icon: <Pill          className="h-5 w-5 text-purple-600" />, bg: 'bg-purple-50', border: 'border-purple-200', label: 'Prescription Issued' },
+    PRESCRIPTION_READY:     { icon: <CheckCircle2  className="h-5 w-5 text-orange-600" />, bg: 'bg-orange-50', border: 'border-orange-200', label: 'Ready for Pickup' },
     DISPENSED:              { icon: <CheckCircle2  className="h-5 w-5 text-teal-600" />,  bg: 'bg-teal-50',   border: 'border-teal-200',  label: 'Medicines Dispensed' },
     INFO:                   { icon: <Bell          className="h-5 w-5 text-gray-500" />,  bg: 'bg-gray-50',   border: 'border-gray-200',  label: 'Notification' },
   };
@@ -671,14 +673,20 @@ export default function PatientPortal() {
 
                         {/* Action buttons */}
                         {n.type === 'PRESCRIPTION_ISSUED' && n.referenceId && (
-                          <a
-                            href={`${window.location.protocol}//${networkHost}:${window.location.port}/prescription/${n.referenceId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 underline underline-offset-2"
+                          <button
+                            onClick={() => setViewQrId(n.referenceId)}
+                            className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 underline underline-offset-2 focus:outline-none"
                           >
-                            <Pill className="h-3 w-3" /> View Prescription
-                          </a>
+                            <QrCode className="h-3 w-3" /> View QR
+                          </button>
+                        )}
+                        {n.type === 'PRESCRIPTION_READY' && n.referenceId && (
+                          <button
+                            onClick={() => setViewQrId(n.referenceId)}
+                            className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-orange-700 hover:text-orange-900 underline underline-offset-2 focus:outline-none"
+                          >
+                            <QrCode className="h-3 w-3" /> Pickup QR
+                          </button>
                         )}
                         {n.type === 'DISPENSED' && (
                           <button
@@ -767,6 +775,27 @@ export default function PatientPortal() {
             <h2 className="text-2xl font-semibold">Profile & Settings</h2>
             <UserProfile isMe={true} role="patient" />
           </TabsContent>
+
+          {/* View QR Dialog */}
+          <Dialog open={!!viewQrId} onOpenChange={(o) => !o && setViewQrId(null)}>
+              <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                      <DialogTitle>Prescription QR Code</DialogTitle>
+                      <DialogDescription>Scan to view prescription slip</DialogDescription>
+                  </DialogHeader>
+                  <div className="flex justify-center py-6">
+                      {viewQrId && (
+                            <div className="bg-white p-4 rounded-lg shadow-sm border">
+                              <QRCodeSVG 
+                                  value={`${window.location.protocol}//${networkHost}:${window.location.port}/prescription/${viewQrId}`}
+                                  size={200}
+                                  level="H" 
+                              />
+                            </div>
+                      )}
+                  </div>
+              </DialogContent>
+          </Dialog>
 
         </Tabs>
       </div>

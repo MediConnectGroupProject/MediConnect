@@ -16,6 +16,7 @@ import {
     getDoctorProfile,
     updateDoctorProfile
 } from '../controllers/doctorController.js';
+import { getAvailableSlots } from '../controllers/patientController.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { requireRole } from '../middleware/requireRole.js';
 import { protect } from '../middleware/authMiddleware.js';
@@ -41,6 +42,7 @@ router.get('/profile', protect, requireRole('doctor'), asyncHandler(getDoctorPro
 router.patch('/profile', protect, requireRole('doctor'), asyncHandler(updateDoctorProfile));
 
 router.get('/patients', protect, requireRole('doctor'), asyncHandler(getPatients));
+router.get('/slots', protect, requireRole('doctor'), asyncHandler(getAvailableSlots));
 router.post('/appointments', protect, requireRole('doctor'), asyncHandler(createAppointment));
 
 export default router;

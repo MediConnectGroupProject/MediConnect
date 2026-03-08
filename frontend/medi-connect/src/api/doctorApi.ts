@@ -183,3 +183,13 @@ export const deletePrescription = async (id: string) => {
     return res.json();
 }
 
+// get available time slots for the logged-in doctor on a specific date
+export const getAvailableSlots = async (date: string) => {
+    const res = await fetch(`${API_URL}/slots?date=${date}`, {
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch slots');
+    return res.json();
+}
+

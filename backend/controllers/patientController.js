@@ -135,7 +135,7 @@ export const getAvailableDoctors = async (req, res) => {
 // get available time slots for a specific doctor on a specific date
 export const getAvailableSlots = async (req, res) => {
 
-    const { doctorId } = req.params;
+    const doctorId = req.params.doctorId || req.user?.id;
     const { date } = req.query;
 
     if (!doctorId || !date) {
