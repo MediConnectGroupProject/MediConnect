@@ -11,6 +11,7 @@ interface Medicine {
     medicineId: string;
     name: string;
     stock: number;
+    supplierId?: string;
 }
 
 interface Supplier {
@@ -41,7 +42,7 @@ export function ReceiveStockModal({ isOpen, onClose, medicine, onSuccess }: Rece
     useEffect(() => {
         if (isOpen) {
             setFormData({
-                supplierId: '',
+                supplierId: medicine?.supplierId || '',
                 batchNumber: '',
                 quantity: '',
                 costPrice: '',
@@ -50,7 +51,7 @@ export function ReceiveStockModal({ isOpen, onClose, medicine, onSuccess }: Rece
             });
             fetchSuppliers();
         }
-    }, [isOpen]);
+    }, [isOpen, medicine]);
 
     const fetchSuppliers = async () => {
         try {
@@ -103,13 +104,14 @@ export function ReceiveStockModal({ isOpen, onClose, medicine, onSuccess }: Rece
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
 
                     <div className="space-y-2">
-                        <Label>Supplier <span className="text-red-500">*</span></Label>
+                        <Label>Supplier {medicine?.supplierId ? '' : <span className="text-red-500">*</span>}</Label>
                         <Select 
                             value={formData.supplierId} 
                             onValueChange={(val) => setFormData({...formData, supplierId: val})}
+                            disabled={!!medicine?.supplierId}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Select Supplier" />
+                                <SelectValue placeholder={medicine?.supplierId ? "Default Supplier Assigned" : "Select Supplier"} />
                             </SelectTrigger>
                             <SelectContent>
                                 {suppliers.map((sup) => (
@@ -117,6 +119,9 @@ export function ReceiveStockModal({ isOpen, onClose, medicine, onSuccess }: Rece
                                 ))}
                             </SelectContent>
                         </Select>
+                        {!!medicine?.supplierId && (
+                            <p className="text-xs text-gray-500">Supplier is automatically assigned from original registration.</p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

@@ -138,6 +138,21 @@ export const getInventoryWithBatches = async (req, res) => {
             }
         });
 
+        const medicineIds = medicines.map(m => m.medicineId);
+        const originalBatches = await prisma.batch.findMany({
+            where: { medicineId: { in: medicineIds }, supplierId: { not: null } },
+            orderBy: { createdAt: 'asc' },
+            distinct: ['medicineId'],
+            select: { medicineId: true, supplierId: true, supplier: { select: { name: true } } }
+        });
+        
+        const originalSupplierMap = {};
+        const originalSupplierNameMap = {};
+        originalBatches.forEach(b => {
+             originalSupplierMap[b.medicineId] = b.supplierId;
+             originalSupplierNameMap[b.medicineId] = b.supplier?.name || null;
+        });
+
         // Calculate total stock dynamically from batches
         const inventory = medicines.map(med => {
             const totalStock = med.batches.reduce((sum, b) => sum + b.quantity, 0);
@@ -154,6 +169,8 @@ export const getInventoryWithBatches = async (req, res) => {
                 allowSplit: med.allowSplit,
                 category: med.medicineCategory?.name || 'Uncategorized',
                 dosage: med.medicineDosage?.name || 'N/A',
+                supplierId: originalSupplierMap[med.medicineId] || null,
+                supplierName: originalSupplierNameMap[med.medicineId] || null,
                 batches: med.batches
             };
         });
@@ -198,7 +215,6 @@ export const getInventoryAlerts = async (req, res) => {
         const expiringBatches = await prisma.batch.findMany({
             where: {
                 expiryDate: {
-                    gte: today,
                     lte: futureDate
                 },
                 quantity: { gt: 0 } // Only warn if we actually have stock of it

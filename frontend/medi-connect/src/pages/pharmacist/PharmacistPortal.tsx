@@ -11,6 +11,7 @@ import { PharmacyPOS } from './PharmacyPOS';
 import { PrescriptionReceipt } from './PrescriptionReceipt';
 import { PrescriptionDetailsModal } from './PrescriptionDetailsModal';
 import { InventoryTable } from './InventoryTable';
+import { InvoiceHistory } from './InvoiceHistory';
 import { MedicineFormModal } from './MedicineFormModal';
 import { ReceiveStockModal } from './ReceiveStockModal';
 import toast from 'react-hot-toast';
@@ -173,12 +174,13 @@ export function PharmacistPortal() {
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
             <TabsTrigger value="inventory">Inventory</TabsTrigger>
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
             <TabsTrigger value="pickup">Ready for Pickup</TabsTrigger>
             <TabsTrigger value="pos">Point of Sale</TabsTrigger>
+            <TabsTrigger value="invoices">Invoices</TabsTrigger>
           </TabsList>
 
           {/* Prescriptions Tab */}
@@ -312,7 +314,7 @@ export function PharmacistPortal() {
                   />
                 </div>
                 <Button onClick={() => { setEditingMedicine(null); setIsMedicineFormOpen(true); }}>
-                    Add/Edit Medicine
+                    Register New Item
                 </Button>
               </div>
             </div>
@@ -388,7 +390,17 @@ export function PharmacistPortal() {
                             </p>
                             <p className="text-xs text-gray-500">Supplier: {alert.supplier}</p>
                         </div>
-                        <Button size="sm" variant="outline" className="border-red-200 hover:bg-red-100 text-red-700">Reorder</Button>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="border-red-200 hover:bg-red-100 text-red-700"
+                            onClick={() => {
+                                setInventorySearch(alert.name);
+                                setActiveTab('inventory');
+                            }}
+                        >
+                            Reorder
+                        </Button>
                         </div>
                     ))}
                     </div>
@@ -407,21 +419,32 @@ export function PharmacistPortal() {
                 <CardContent>
                     <div className="space-y-4 max-h-[400px] overflow-y-auto">
                     {alerts.expiring.length === 0 ? <p className="text-gray-500 text-sm">No expiring batches.</p> : 
-                        alerts.expiring.map((batch: any) => (
-                        <div key={batch.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-50/50">
-                        <div className="flex-1">
-                            <h3 className="font-medium text-orange-900">{batch.medicineName}</h3>
-                            <p className="text-xs text-orange-700">
-                                Batch: {batch.batchNumber} • Qty: {batch.quantity}
-                            </p>
-                            <p className="text-xs text-gray-500">Supplier: {batch.supplier}</p>
-                            <p className="text-xs text-red-600 font-semibold">
-                                Expires: {new Date(batch.expiryDate).toLocaleDateString()}
-                            </p>
-                        </div>
-                        <Badge variant="outline" className="border-orange-200 text-orange-700">Check</Badge>
-                        </div>
-                    ))}
+                        alerts.expiring.map((batch: any) => {
+                            const isExpired = new Date(batch.expiryDate) < new Date();
+                            const bgClass = isExpired ? 'bg-red-50/50' : 'bg-orange-50/50';
+                            const titleClass = isExpired ? 'text-red-900' : 'text-orange-900';
+                            const textClass = isExpired ? 'text-red-700' : 'text-orange-700';
+                            const badgeBorder = isExpired ? 'border-red-200' : 'border-orange-200';
+                            const badgeText = isExpired ? 'text-red-700' : 'text-orange-700';
+                            const label = isExpired ? 'Expired' : 'Check';
+
+                            return (
+                                <div key={batch.id} className={`flex items-center justify-between p-3 border rounded-lg ${bgClass}`}>
+                                <div className="flex-1">
+                                    <h3 className={`font-medium ${titleClass}`}>{batch.medicineName}</h3>
+                                    <p className={`text-xs ${textClass}`}>
+                                        Batch: {batch.batchNumber} • Qty: {batch.quantity}
+                                    </p>
+                                    <p className="text-xs text-gray-500">Supplier: {batch.supplier}</p>
+                                    <p className="text-xs text-red-600 font-semibold">
+                                        {isExpired ? 'Expired on:' : 'Expires:'} {new Date(batch.expiryDate).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <Badge variant="outline" className={`${badgeBorder} ${badgeText}`}>{label}</Badge>
+                                </div>
+                            );
+                        })
+                    }
                     </div>
                 </CardContent>
                 </Card>
@@ -467,6 +490,11 @@ export function PharmacistPortal() {
             {/* Point of Sale Tab */}
           <TabsContent value="pos" className="space-y-6">
               <PharmacyPOS />
+          </TabsContent>
+
+          {/* Invoices Tab */}
+          <TabsContent value="invoices" className="space-y-6">
+              <InvoiceHistory />
           </TabsContent>
         </Tabs>
       </div>

@@ -57,8 +57,8 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
                     brand: editingMedicine.brand || '',
                     strength: editingMedicine.strength || '',
                     description: editingMedicine.description || '',
-                    categoryId: editingMedicine.categoryId || '',
-                    dosageId: editingMedicine.dosageId || '',
+                    categoryId: editingMedicine.categoryId ? String(editingMedicine.categoryId) : '',
+                    dosageId: editingMedicine.dosageId ? String(editingMedicine.dosageId) : '',
                     price: editingMedicine.price ? editingMedicine.price.toString() : '',
                     supplierId: '', batchNumber: '', quantity: '', costPrice: '', manufacturedDate: '', expiryDate: ''
                 });
@@ -196,7 +196,7 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
                                 </SelectTrigger>
                                 <SelectContent>
                                     {categories.map((cat) => (
-                                        <SelectItem key={cat.categoryId} value={cat.categoryId}>{cat.name}</SelectItem>
+                                        <SelectItem key={cat.categoryId} value={String(cat.categoryId)}>{cat.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -212,7 +212,7 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
                                 </SelectTrigger>
                                 <SelectContent>
                                     {dosages.map((dos) => (
-                                        <SelectItem key={dos.dosageId} value={dos.dosageId}>{dos.name}</SelectItem>
+                                        <SelectItem key={dos.dosageId} value={String(dos.dosageId)}>{dos.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -221,7 +221,7 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="price">Base Unit Price ($) <span className="text-red-500">*</span></Label>
+                            <Label htmlFor="price">Base Unit Price ($) <span className="text-red-500">*</span><span className="text-gray-400 font-normal text-xs ml-1">(price per single unit, e.g. one tablet)</span></Label>
                             <Input 
                                 id="price" 
                                 type="number" 
@@ -314,7 +314,7 @@ export function MedicineFormModal({ isOpen, onClose, editingMedicine, onSuccess 
                     <div className="pt-4 flex justify-end gap-2 border-t">
                         <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>Cancel</Button>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading ? 'Saving...' : editingMedicine ? 'Update Medicine' : 'Register Medicine'}
+                            {isLoading ? 'Saving...' : editingMedicine ? 'Update Medicine' : 'Register New Item'}
                         </Button>
                     </div>
                 </form>
