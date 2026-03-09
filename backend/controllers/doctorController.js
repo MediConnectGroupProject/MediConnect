@@ -1,5 +1,6 @@
 import prisma from '../config/connection.js';
 import bcrypt from 'bcryptjs';
+import { createNotification } from '../helpers/notificationHelper.js';
 
 // get doctor stats
 export const getDoctorStats = async (req, res) => {
@@ -134,15 +135,13 @@ export const getUpNextAppointment = async (req, res) => {
         const endOfDay = new Date(now);
         endOfDay.setHours(23, 59, 59, 999);
 
-        // 1. Check for Active Appointment (IN_PROGRESS)
+        // 1. Check for Active Appointment (IN_PROGRESS) — NO date filter.
+        //    A doctor can only have one active consultation at a time, regardless of which date
+        //    the appointment was booked for (e.g. started from Portal on a future-date appointment).
         const activeAppointment = await prisma.appointment.findFirst({
             where: {
                 doctorId: userId,
                 status: 'IN_PROGRESS',
-                date: {
-                    gte: startOfDay,
-                    lte: endOfDay
-                }
             },
             include: {
                 patient: {
@@ -197,17 +196,51 @@ export const getUpNextAppointment = async (req, res) => {
 
 // update appointment status
 export const updateAppointmentStatus = async (req, res) => { 
-
         const { appointmentId } = req.params;
         const { status } = req.body;
 
-         const updatedAppointment = await prisma.appointment.update({
+        const updatedAppointment = await prisma.appointment.update({
             where: { appointmentId },
-            data: { status }
+            data: { status },
+            include: {
+                patient: { include: { user: { select: { id: true, firstName: true, lastName: true } } } },
+                doctor:  { include: { user: { select: { firstName: true, lastName: true } } } }
+            }
         });
 
-        res.status(200).json(updatedAppointment);
+        // Send notification to patient
+        const patientUserId = updatedAppointment.patient?.user?.id;
+        const doctorName   = updatedAppointment.doctor?.user
+            ? `Dr. ${updatedAppointment.doctor.user.firstName} ${updatedAppointment.doctor.user.lastName}`
+            : 'your doctor';
+        const apptDate = new Date(updatedAppointment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+        if (patientUserId) {
+            if (status === 'CONFIRMED') {
+                await createNotification(
+                    patientUserId,
+                    'APPOINTMENT_CONFIRMED',
+                    `Your appointment with ${doctorName} on ${apptDate} has been confirmed.`,
+                    appointmentId
+                );
+            } else if (status === 'IN_PROGRESS') {
+                await createNotification(
+                    patientUserId,
+                    'CONSULTATION_STARTED',
+                    `${doctorName} has started your consultation. Please proceed to the room.`,
+                    appointmentId
+                );
+            } else if (status === 'CANCELED') {
+                await createNotification(
+                    patientUserId,
+                    'APPOINTMENT_CANCELLED',
+                    `Your appointment with ${doctorName} on ${apptDate} has been cancelled.`,
+                    appointmentId
+                );
+            }
+        }
+
+        res.status(200).json(updatedAppointment);
 
 }
 
@@ -220,7 +253,7 @@ export const createPrescription = async (req, res) => {
         // Create prescription
         const prescription = await prisma.prescription.create({
             data: {
-                userId: patientId, // The patient receiving the prescription
+                userId: patientId,
                 appointmentId: appointmentId || null,
                 notes: notes,
                 status: 'PENDING',
@@ -230,7 +263,7 @@ export const createPrescription = async (req, res) => {
                         dosage: item.dosage,
                         quantity: item.tabletCount ? parseInt(item.tabletCount) : null,
                         durationText: item.duration || null,
-                        duration: item.duration ? new Date(Date.now() + parseInt(item.duration) * 24 * 60 * 60 * 1000) : null, 
+                        duration: item.duration ? new Date(Date.now() + parseInt(item.duration) * 24 * 60 * 60 * 1000) : null,
                         instructions: `${item.frequency} - ${item.timing}. ${item.instructions || ''}`
                     }))
                 }
@@ -240,8 +273,20 @@ export const createPrescription = async (req, res) => {
             }
         });
 
-        res.status(201).json(prescription);
+        // Notify patient that a prescription was issued
+        const doctor = await prisma.doctor.findUnique({
+            where: { doctorId: userId },
+            include: { user: { select: { firstName: true, lastName: true } } }
+        });
+        const doctorName = doctor?.user ? `Dr. ${doctor.user.firstName} ${doctor.user.lastName}` : 'Your doctor';
+        await createNotification(
+            patientId,
+            'PRESCRIPTION_ISSUED',
+            `${doctorName} has issued a new prescription for you.`,
+            prescription.prescriptionId
+        );
 
+        res.status(201).json(prescription);
 
 }
 // get patient profile

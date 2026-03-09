@@ -54,6 +54,9 @@ export default function DoctorPortal() {
       );
   }, [patientsList, patientSearchQuery]);
 
+  const [globalActiveConsultation, setGlobalActiveConsultation] = useState(false);
+
+  // Keep the local selected-date check for the IN_PROGRESS card highlight
   const hasActiveConsultation = useMemo(() => todaysSchedule.some(a => a.status === 'in_progress'), [todaysSchedule]);
 
   const loadPortalData = async () => {
@@ -64,13 +67,20 @@ export default function DoctorPortal() {
             // Map Schedule
             const schedule = data.schedule.map((apt: any) => ({
                 id: apt.appointmentId,
-                patientId: apt.patientId, 
+                patientId: apt.patientId,
                 patient: apt.patient?.user ? `${apt.patient.user.firstName} ${apt.patient.user.lastName}` : 'Unknown',
                 time: new Date(apt.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: apt.status.toLowerCase(),
-                type: 'Consultation', 
+                type: 'Consultation',
+                createdAt: apt.createdAt,   // needed for 24h auto-confirm window
             }));
             setTodaysSchedule(schedule);
+
+            // Global active consultation check — queries ALL dates, not just selected
+            try {
+                const activeApts = await api.getAppointments(null, 'IN_PROGRESS');
+                setGlobalActiveConsultation(Array.isArray(activeApts) && activeApts.length > 0);
+            } catch { /* non-critical */ }
 
             // Map Queue
             const queue = data.schedule.filter((apt: any) => apt.status === 'PENDING' || apt.status === 'IN_PROGRESS').map((apt: any) => {
@@ -543,24 +553,87 @@ export default function DoctorPortal() {
                         <div className="flex gap-2 items-center">
                             <Button variant="ghost" size="sm" onClick={() => navigate('.', { state: { tab: 'patients', patientId: appointment.patientId } })}>View Profile</Button> 
                             
-                            {/* Status Actions */}
-                            {appointment.status === 'upcoming' || appointment.status === 'urgent' || appointment.status === 'pending' ? (
-                                <Button size="sm" 
-                                    disabled={hasActiveConsultation}
-                                    title={hasActiveConsultation ? "Complete current consultation first" : "Start Consultation"}
+                            {/* Confirm / Cancel — only for PENDING, locked after 24h auto-confirm */}
+                            {(appointment.status === 'pending') && (() => {
+                              const createdMs  = appointment.createdAt ? new Date(appointment.createdAt).getTime() : 0;
+                              const hoursOld   = (Date.now() - createdMs) / 3_600_000;
+                              const autoConfirmed = hoursOld >= 24;
+                              return (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-700 border-green-300 hover:bg-green-50"
+                                    disabled={autoConfirmed}
+                                    title={autoConfirmed ? 'Auto-confirmed by the system after 24 h — no changes allowed' : 'Confirm this appointment'}
                                     onClick={async () => {
-                                    const toastId = toast.loading('Starting...');
+                                      const toastId = toast.loading('Confirming...');
+                                      try {
+                                        const api = await import('../../api/doctorApi');
+                                        await api.updateAppointmentStatus(appointment.id, 'CONFIRMED');
+                                        toast.success('Appointment confirmed', { id: toastId });
+                                        loadPortalData();
+                                      } catch { toast.error('Failed to confirm', { id: toastId }); }
+                                    }}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" /> Confirm
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                    disabled={autoConfirmed}
+                                    title={autoConfirmed ? 'Auto-confirmed by the system after 24 h — no changes allowed' : 'Cancel this appointment'}
+                                    onClick={async () => {
+                                      if (!window.confirm(`Cancel appointment for ${appointment.patient}?`)) return;
+                                      const toastId = toast.loading('Cancelling...');
+                                      try {
+                                        const api = await import('../../api/doctorApi');
+                                        await api.updateAppointmentStatus(appointment.id, 'CANCELED');
+                                        toast.success('Appointment cancelled', { id: toastId });
+                                        loadPortalData();
+                                      } catch { toast.error('Failed to cancel', { id: toastId }); }
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </>
+                              );
+                            })()}
+
+                            {/* Start Consultation — visible for PENDING and CONFIRMED, but only clickable if CONFIRMED */}
+                            {(appointment.status === 'pending' || appointment.status === 'confirmed' || appointment.status === 'upcoming' || appointment.status === 'urgent') && (
+                                <Button size="sm"
+                                    disabled={globalActiveConsultation || appointment.status === 'pending'}
+                                    title={
+                                      appointment.status === 'pending'
+                                        ? 'Confirm the appointment first before starting a consultation'
+                                        : globalActiveConsultation
+                                        ? 'Complete the active consultation first'
+                                        : 'Start Consultation'
+                                    }
+                                    onClick={async () => {
+                                    const toastId = toast.loading('Starting consultation...');
                                     try {
                                         const api = await import('../../api/doctorApi');
                                         await api.updateAppointmentStatus(appointment.id, 'IN_PROGRESS');
-                                        toast.success('Consultation started', { id: toastId });
-                                        loadPortalData();
+                                        toast.success('Consultation started — redirecting to dashboard', { id: toastId });
+                                        // Navigate to dashboard so the active consultation card
+                                        // and prescription form auto-populate with this patient
+                                        navigate('/dashboard/doctor', {
+                                            state: {
+                                                startedConsultation: {
+                                                    id: appointment.id,
+                                                    patientName: appointment.patient,
+                                                    patientId: appointment.patientId,
+                                                }
+                                            }
+                                        });
                                     } catch (e: any) {
-                                        // Show backend error message if available
-                                        toast.error(e.message || 'Failed to update status', { id: toastId });
+                                        toast.error(e.message || 'Failed to start consultation', { id: toastId });
                                     }
                                 }}>Start Consultation</Button>
-                            ) : null}
+                            )}
 
                             {appointment.status === 'in_progress' && (
                                 <>
