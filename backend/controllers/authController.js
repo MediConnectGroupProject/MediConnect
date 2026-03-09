@@ -40,13 +40,13 @@ const register = async (req, res) => {
     // Check Registration Enabled Setting
     const settings = await prisma.systemSettings.findFirst();
     if (settings && !settings.registrationEnabled) {
-         // Allow only if first user (super admin fallback) or specific bypass logic? 
-         // For now, strict block.
-         // Actually, if it's an admin creating via Admin Portal, they use a different route usually?
-         // This 'register' endpoint is public. So we block it.
-         return res.status(403).json({
-             message: 'New registrations are currently disabled by the administrator.'
-         });
+        // Allow only if first user (super admin fallback) or specific bypass logic? 
+        // For now, strict block.
+        // Actually, if it's an admin creating via Admin Portal, they use a different route usually?
+        // This 'register' endpoint is public. So we block it.
+        return res.status(403).json({
+            message: 'New registrations are currently disabled by the administrator.'
+        });
     }
 
     // Check Password Policy
@@ -145,10 +145,10 @@ const login = async (req, res) => {
 
     if (!user) {
         await logAction({
-             action: 'LOGIN_FAILED',
-             details: `Invalid email attempt: ${email}`,
-             req,
-             status: 'FAILED'
+            action: 'LOGIN_FAILED',
+            details: `Invalid email attempt: ${email}`,
+            req,
+            status: 'FAILED'
         });
         return res.status(401).json({
             message: 'Invalid credentials'
@@ -174,9 +174,9 @@ const login = async (req, res) => {
         // Allow ADMINS only
         const isAdmin = user.roles.some(r => r.role.name === 'ADMIN');
         if (!isAdmin) {
-             return res.status(503).json({
-                 message: 'System is currently under maintenance. Please try again later.'
-             });
+            return res.status(503).json({
+                message: 'System is currently under maintenance. Please try again later.'
+            });
         }
     }
 
@@ -184,14 +184,14 @@ const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-         await logAction({
-             userId: user.id,
-             action: 'LOGIN_FAILED',
-             details: 'Incorrect password',
-             req,
-             status: 'FAILED'
+        await logAction({
+            userId: user.id,
+            action: 'LOGIN_FAILED',
+            details: 'Incorrect password',
+            req,
+            status: 'FAILED'
         });
-         return res.status(400).json({
+        return res.status(400).json({
             message: 'Invalid credentials'
         });
     }
@@ -232,10 +232,10 @@ const login = async (req, res) => {
         // Multiple roles AND selection provided
         // Case-insensitive check
         const matchedRole = activeRoles.find(r => r.toUpperCase() === chosenRole.toUpperCase());
-        
+
         if (!matchedRole) {
-             console.log(`Role mismatch! Active: ${activeRoles}, Chosen: ${chosenRole}`);
-             return res.status(400).json({
+            console.log(`Role mismatch! Active: ${activeRoles}, Chosen: ${chosenRole}`);
+            return res.status(400).json({
                 message: `Invalid role selection. Available: ${activeRoles.join(', ')}`
             });
         }
@@ -244,12 +244,12 @@ const login = async (req, res) => {
 
     // Generate auth token
     const roleNames = activeRoles; // Keep all roles in token for reference, but primary determines dashboard access
-    
+
     // Note: getPrimaryRole utility might be used elsewhere, but here we explicitly set it based on selection
 
     const tokenData = {
         id: user.id,
-        role: roleNames, 
+        role: roleNames,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
@@ -358,7 +358,7 @@ const verifyEmail = async (req, res) => {
 
 const getMe = async (req, res) => {
     // passport already verified JWT
-    return res.json({
+    return res.status(200).json({
         user: {
             id: req.user.id,
             email: req.user.email,
