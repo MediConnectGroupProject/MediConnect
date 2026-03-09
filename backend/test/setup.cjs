@@ -20,29 +20,30 @@ global.testUtils = {
   mockNext: jest.fn(),
 };
 
-const mockPrisma = {
-  user: { count: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
-  role: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
-  systemSettings: { findFirst: jest.fn(), update: jest.fn() },
-  appointment: { count: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
-  prescription: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), delete: jest.fn() },
-  doctorProfile: { findUnique: jest.fn(), upsert: jest.fn() },
-  userRole: { findFirst: jest.fn(), update: jest.fn(), create: jest.fn(), delete: jest.fn() },
-  doctor: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-  patient: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
-  labReport: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-  notification: { findMany: jest.fn(), create: jest.fn() },
-  bill: { findMany: jest.fn(), create: jest.fn() },
-  auditLog: { findMany: jest.fn(), count: jest.fn(), createMany: jest.fn(), findFirst: jest.fn() },
-  $queryRaw: jest.fn(),
-};
-
 // Mock Prisma client
-jest.mock('../config/connection.js', () => ({
-  __esModule: true,
-  default: mockPrisma,
-  ...mockPrisma
-}), { virtual: true }); // virtual: true just in case
+jest.mock('../config/connection.js', () => {
+  const mockP = {
+    user: { count: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    role: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
+    systemSettings: { findFirst: jest.fn(), update: jest.fn() },
+    appointment: { count: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
+    prescription: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), delete: jest.fn() },
+    doctorProfile: { findUnique: jest.fn(), upsert: jest.fn() },
+    userRole: { findFirst: jest.fn(), update: jest.fn(), create: jest.fn(), delete: jest.fn() },
+    doctor: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+    patient: { findMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
+    labReport: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), count: jest.fn() },
+    notification: { findMany: jest.fn(), create: jest.fn() },
+    bill: { findMany: jest.fn(), create: jest.fn() },
+    auditLog: { findMany: jest.fn(), count: jest.fn(), createMany: jest.fn(), findFirst: jest.fn() },
+    $queryRaw: jest.fn(),
+  };
+  return {
+    __esModule: true,
+    default: mockP,
+    ...mockP
+  };
+});
 
 // Mock bcrypt
 jest.mock('bcryptjs', () => ({
@@ -59,10 +60,12 @@ jest.mock('jsonwebtoken', () => ({
 
 // Mock email utilities
 jest.mock('../utils/sendEmails.js', () => ({
+  __esModule: true,
   default: jest.fn(),
 }));
 
 jest.mock('../utils/authToken.js', () => ({
+  __esModule: true,
   default: jest.fn(),
 }));
 
@@ -80,6 +83,11 @@ jest.mock('../helpers/notificationHelper.js', () => ({
 
 // Mock crypto
 jest.mock('crypto', () => ({
-  randomBytes: jest.fn(),
-  createHash: jest.fn(),
+  randomBytes: jest.fn().mockReturnValue({
+    toString: jest.fn().mockReturnValue('mocked-token')
+  }),
+  createHash: jest.fn().mockReturnValue({
+    update: jest.fn().mockReturnThis(),
+    digest: jest.fn().mockReturnValue('mocked-hash')
+  }),
 }));
