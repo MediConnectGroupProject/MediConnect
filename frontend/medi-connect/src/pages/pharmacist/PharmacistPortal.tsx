@@ -141,6 +141,7 @@ export function PharmacistPortal() {
       })),
       dosage: p.prescriptionItems.map((i: any) => i.dosage).filter(Boolean).join(', ') || 'N/A', 
       instructions: p.prescriptionItems.map((i: any) => i.instructions).filter(Boolean).join(' | ') || p.notes || 'No instructions provided',
+      generalInstructions: p.notes || null, // Doctor's general notes for the printable receipt
       status: p.status.toLowerCase(),
       qrCode: p.prescriptionId.substring(0, 8).toUpperCase(),
       submittedAt: new Date(p.issuedAt).toLocaleString()

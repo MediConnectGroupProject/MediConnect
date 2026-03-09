@@ -74,6 +74,12 @@ export const PrescriptionReceipt: React.FC<PrescriptionReceiptProps> = ({ prescr
             </div>
 
             {/* Footer Notice */}
+            {prescription.generalInstructions && (
+              <div className="border border-blue-300 bg-blue-50 rounded-lg p-3 mb-4">
+                <p className="font-semibold text-xs text-blue-800 mb-1 uppercase tracking-wide">Doctor's General Notes</p>
+                <p className="text-xs text-blue-900 leading-relaxed whitespace-pre-line">{prescription.generalInstructions}</p>
+              </div>
+            )}
             <div className="text-xs text-center text-gray-600 border-t pt-4">
                <p><b>Note:</b> Please contact your doctor or pharmacist if you experience any unexpected side effects.</p>
             </div>
