@@ -12,9 +12,9 @@ import { protect } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 
-router.get('/appointments', protect,requireRole('patient'), asyncHandler(getMyAppointments));
-router.get('/prescriptions', protect,requireRole('patient'), asyncHandler(getMyPrescriptions));
-router.get('/notifications', protect,requireRole('patient'), asyncHandler(getNotifications));
-router.get('/billing', protect,requireRole('patient'), asyncHandler(getBillingHistory));
+router.get('/appointments', protect, requireRole('patient'), asyncHandler(getMyAppointments));
+router.get('/prescriptions', protect, requireRole('patient'), asyncHandler(getMyPrescriptions));
+router.get('/notifications', protect, requireRole('patient'), asyncHandler(getNotifications));
+router.get('/billing', protect, requireRole('patient'), asyncHandler(getBillingHistory));
 
 export default router;

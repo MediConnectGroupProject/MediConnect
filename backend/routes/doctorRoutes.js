@@ -19,6 +19,13 @@ import {
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { requireRole } from '../middleware/requireRole.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { validateRequest } from '../middleware/validateRequestMiddleware.js';
+import { 
+    updateAppointmentStatusSchema,
+    createPrescriptionSchema,
+    getPatientByIdSchema,
+    getAppointmentsSchema,
+} from '../validators/doctorValidator.js';
 
 const router = express.Router();
 
@@ -26,13 +33,13 @@ const router = express.Router();
 router.get('/prescriptions/:id/public', asyncHandler(getPrescriptionById));
 
 router.get('/stats',protect, requireRole('doctor'), asyncHandler(getDoctorStats));
-router.get('/appointments',protect, requireRole('doctor'), asyncHandler(getAppointments));
+router.get('/appointments',protect, requireRole('doctor'),validateRequest(getAppointmentsSchema), asyncHandler(getAppointments));
 router.get('/appointments/up-next',protect, requireRole('doctor'), asyncHandler(getUpNextAppointment));
-router.patch('/appointments/:appointmentId/status',protect, requireRole('doctor'), asyncHandler(updateAppointmentStatus));
+router.patch('/appointments/:appointmentId/status',protect, requireRole('doctor'), validateRequest(updateAppointmentStatusSchema), asyncHandler(updateAppointmentStatus));
 router.get('/prescriptions/requests', protect, requireRole('doctor'), asyncHandler(getPrescriptionRequests));
-router.post('/prescriptions',protect, requireRole('doctor'), asyncHandler(createPrescription));
+router.post('/prescriptions',protect, requireRole('doctor'),validateRequest(createPrescriptionSchema), asyncHandler(createPrescription));
 router.delete('/prescriptions/:id', protect, requireRole('doctor'), asyncHandler(deletePrescription));
-router.get('/patients/:patientId',protect, requireRole(['doctor', 'admin']), asyncHandler(getPatientById));
+router.get('/patients/:patientId',protect, requireRole(['doctor', 'admin']), validateRequest(getPatientByIdSchema), asyncHandler(getPatientById));
 
 router.get('/availability', protect, requireRole('doctor'), asyncHandler(getDoctorAvailability));
 router.put('/availability', protect, requireRole('doctor'), asyncHandler(updateDoctorAvailability));
@@ -42,5 +49,4 @@ router.patch('/profile', protect, requireRole('doctor'), asyncHandler(updateDoct
 
 router.get('/patients', protect, requireRole('doctor'), asyncHandler(getPatients));
 router.post('/appointments', protect, requireRole('doctor'), asyncHandler(createAppointment));
-
 export default router;
