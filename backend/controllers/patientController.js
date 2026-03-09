@@ -135,7 +135,7 @@ export const getAvailableDoctors = async (req, res) => {
 // get available time slots for a specific doctor on a specific date
 export const getAvailableSlots = async (req, res) => {
 
-    const { doctorId } = req.params;
+    const doctorId = req.params.doctorId || req.user?.id;
     const { date } = req.query;
 
     if (!doctorId || !date) {
@@ -167,16 +167,35 @@ export const getAvailableSlots = async (req, res) => {
     }
 
     const dayConfig = workingHours[dayName];
+    if (
+        typeof dayConfig.start !== 'string' ||
+        typeof dayConfig.end !== 'string' ||
+        dayConfig.start.trim() === '' ||
+        dayConfig.end.trim() === ''
+    ) {
+        return res.status(200).json({ slots: [], message: `Doctor's working hours are not properly configured for ${dayName}s` });
+    }
+
     const [startH, startM] = dayConfig.start.split(':').map(Number);
     const [endH, endM] = dayConfig.end.split(':').map(Number);
+
+    if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) {
+        return res.status(200).json({ slots: [], message: `Doctor's working hours format is invalid for ${dayName}s` });
+    }
 
     // Generate all 30-minute slots within working hours
     const SLOT_DURATION_MIN = 30;
     const allSlots = [];
     let currentH = startH;
     let currentM = startM;
+    let loops = 0;
 
     while (currentH < endH || (currentH === endH && currentM < endM)) {
+        loops++;
+        if (loops > 200) {
+            console.error('INFINITE LOOP PREVENTED in getAvailableSlots', { startH, startM, endH, endM, currentH, currentM });
+            break;
+        }
         const timeStr = `${String(currentH).padStart(2, '0')}:${String(currentM).padStart(2, '0')}`;
         allSlots.push(timeStr);
         currentM += SLOT_DURATION_MIN;

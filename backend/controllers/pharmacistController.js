@@ -52,8 +52,21 @@ export const updatePrescriptionStatus = async (req, res) => {
         data: { status }
     });
 
-    if (status === 'DISPENSED') {
-        // Notify the patient their medicines are ready for pickup
+    if (status === 'READY') {
+        const prescription = await prisma.prescription.findUnique({
+            where: { prescriptionId },
+            select: { userId: true }
+        });
+        if (prescription?.userId) {
+            await createNotification(
+                prescription.userId,
+                'PRESCRIPTION_READY',
+                'Your prescription is ready for pickup at MediConnect Pharmacy.',
+                prescriptionId
+            );
+        }
+    } else if (status === 'DISPENSED') {
+        // Notify the patient their medicines have been dispensed
         const prescription = await prisma.prescription.findUnique({
             where: { prescriptionId },
             select: { userId: true } // userId is the patient's User.id

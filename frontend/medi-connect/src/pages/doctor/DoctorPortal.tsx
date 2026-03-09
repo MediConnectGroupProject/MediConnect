@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Calendar, CheckCircle, Undo, Plus, QrCode, Trash, Search, ChevronLeft, ChevronRight, FileText, Download } from 'lucide-react';
+import { Calendar, CheckCircle, Undo, Plus, QrCode, Trash, Search, ChevronLeft, ChevronRight, FileText, Download, Loader2, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../../components/UserProfile';
 import { QRCodeSVG } from 'qrcode.react';
@@ -57,7 +57,7 @@ export default function DoctorPortal() {
   const [globalActiveConsultation, setGlobalActiveConsultation] = useState(false);
 
   // Keep the local selected-date check for the IN_PROGRESS card highlight
-  const hasActiveConsultation = useMemo(() => todaysSchedule.some(a => a.status === 'in_progress'), [todaysSchedule]);
+  const openPrescriptionRequests = todaysSchedule.filter(a => a.status === 'in_progress').length;
 
   const loadPortalData = async () => {
         try {
@@ -109,7 +109,17 @@ export default function DoctorPortal() {
                          });
                          setWorkingHours(newHours);
                      } else {
-                         setWorkingHours(availData.workingHours);
+                         const safeHours = { ...availData.workingHours };
+                         ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(d => {
+                             if (safeHours[d]) {
+                                 // Auto-heal corrupted days that have active:true but missing time strings
+                                 if (typeof safeHours[d].start !== 'string' || !safeHours[d].start.trim()) safeHours[d].start = '09:00';
+                                 if (typeof safeHours[d].end !== 'string' || !safeHours[d].end.trim()) safeHours[d].end = '17:00';
+                             } else {
+                                 safeHours[d] = { start: '09:00', end: '17:00', active: false };
+                             }
+                         });
+                         setWorkingHours(safeHours);
                      }
                 } else {
                     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -141,18 +151,52 @@ export default function DoctorPortal() {
   const [activeApptTab, setActiveApptTab] = useState("existing");
   const [newAppt, setNewAppt] = useState({ patientId: '', date: '', time: '', type: 'Consultation' });
   const [newPatient, setNewPatient] = useState({ firstName: '', lastName: '', dob: '', gender: 'MALE', phone: '' });
+  
+  // Available Slots State
+  const [slots, setSlots] = useState<{ time: string, available: boolean }[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsMessage, setSlotsMessage] = useState('');
+
+  useEffect(() => {
+    if (isAddApptOpen && newAppt.date) {
+        const fetchSlots = async () => {
+            setSlotsLoading(true);
+            setSlotsMessage('');
+            setSlots([]);
+            setNewAppt(prev => ({ ...prev, time: '' })); // clear selected time
+            try {
+                const api = await import('../../api/doctorApi');
+                const data = await api.getAvailableSlots(newAppt.date);
+                if (data.message) {
+                    setSlotsMessage(data.message);
+                } else {
+                    setSlots(data.slots || []);
+                }
+            } catch (error: any) {
+                setSlotsMessage(error.message || 'Failed to load slots');
+            } finally {
+                setSlotsLoading(false);
+            }
+        };
+        fetchSlots();
+    } else {
+        setSlots([]);
+        setSlotsMessage('');
+    }
+  }, [newAppt.date, isAddApptOpen]);
+
   const [isPrescriptionDialogOpen, setIsPrescriptionDialogOpen] = useState(false);
   const [preSelectedPatientId, setPreSelectedPatientId] = useState<string>('');
   const [viewQrId, setViewQrId] = useState<string | null>(null);
+  const [deletingPrescriptionId, setDeletingPrescriptionId] = useState<string | null>(null);
 
   const handleDeletePrescription = async (id: string) => {
-      if(!window.confirm("Are you sure you want to delete this prescription?")) return;
-      
       const toastId = toast.loading("Deleting...");
       try {
           const api = await import('../../api/doctorApi');
           await api.deletePrescription(id);
           toast.success("Deleted successfully", { id: toastId });
+          setDeletingPrescriptionId(null);
           loadPortalData();
       } catch {
           toast.error("Failed to delete", { id: toastId });
@@ -398,14 +442,18 @@ export default function DoctorPortal() {
                                         <Label>Start Time</Label>
                                         <Input type="time" 
                                             value={workingHours[selectedDays[0]]?.start || '09:00'} 
-                                            onChange={e => updateSelectedDays({ start: e.target.value })} 
+                                            onChange={e => {
+                                                if (e.target.value) updateSelectedDays({ start: e.target.value });
+                                            }} 
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>End Time</Label>
                                         <Input type="time" 
                                             value={workingHours[selectedDays[0]]?.end || '17:00'} 
-                                            onChange={e => updateSelectedDays({ end: e.target.value })} 
+                                            onChange={e => {
+                                                if (e.target.value) updateSelectedDays({ end: e.target.value });
+                                            }} 
                                         />
                                     </div>
                                 </div>
@@ -413,14 +461,28 @@ export default function DoctorPortal() {
                         </div>
                         <DialogFooter>
                             <Button onClick={async () => {
+                                // Validate working hours before saving
+                                const activeDays = Object.entries(workingHours).filter(([_, config]) => config.active);
+                                const invalidDays = activeDays.filter(([_, config]) => {
+                                    return typeof config.start !== 'string' || 
+                                           typeof config.end !== 'string' || 
+                                           config.start.trim() === '' || 
+                                           config.end.trim() === '';
+                                });
+
+                                if (invalidDays.length > 0) {
+                                    toast.error(`Please set valid start and end times for: ${invalidDays.map(([day]) => day).join(', ')}`);
+                                    return;
+                                }
+
                                 const toastId = toast.loading('Updating availability...');
                                 try {
                                     const api = await import('../../api/doctorApi');
                                     await api.updateAvailability({ availability: true, workingHours: workingHours });
                                     toast.success('Availability updated successfully', { id: toastId });
                                     setIsAvailabilityOpen(false);
-                                } catch(e) { 
-                                    console.error(e); 
+                                } catch(e) {
+                                    console.error(e);
                                     toast.error('Failed to update availability', { id: toastId });
                                 }
                             }}>Save Changes</Button>
@@ -493,15 +555,56 @@ export default function DoctorPortal() {
                                     </div>
                                 </TabsContent>
                             </Tabs>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label>Date</Label>
-                                    <Input type="date" value={newAppt.date} onChange={e => setNewAppt({...newAppt, date: e.target.value})} />
+                                    <Label>Date <span className="text-red-500">*</span></Label>
+                                    <Input 
+                                        type="date" 
+                                        value={newAppt.date} 
+                                        min={new Date().toISOString().split('T')[0]}
+                                        onChange={e => setNewAppt({...newAppt, date: e.target.value})} 
+                                    />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Time</Label>
-                                    <Input type="time" value={newAppt.time} onChange={e => setNewAppt({...newAppt, time: e.target.value})} />
-                                </div>
+
+                                {/* Slot Grid */}
+                                {newAppt.date && (
+                                    <div className="space-y-2">
+                                        <Label>Available Time Slots <span className="text-red-500">*</span></Label>
+                                        {slotsLoading ? (
+                                            <div className="flex items-center gap-2 text-gray-500 text-sm py-4 justify-center">
+                                                <Loader2 className="h-4 w-4 animate-spin" /> Loading slots...
+                                            </div>
+                                        ) : slotsMessage ? (
+                                            <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md text-center">{slotsMessage}</div>
+                                        ) : (
+                                            <div className="grid grid-cols-4 gap-2 max-h-44 overflow-y-auto pr-1">
+                                                {slots.map((slot) => (
+                                                    <button
+                                                        key={slot.time}
+                                                        disabled={!slot.available}
+                                                        onClick={() => setNewAppt(f => ({ ...f, time: slot.time }))}
+                                                        className={`
+                                                            text-xs py-2 px-1 rounded-md border font-medium transition-all
+                                                            ${!slot.available
+                                                                ? 'bg-red-50 border-red-200 text-red-400 cursor-not-allowed opacity-60'
+                                                                : newAppt.time === slot.time
+                                                                    ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                                                                    : 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-400'
+                                                            }
+                                                        `}
+                                                    >
+                                                        {slot.time}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {newAppt.time && (
+                                            <p className="text-xs text-gray-500 text-center">
+                                                Selected: <span className="font-semibold text-blue-600">{newAppt.time}</span>
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label>Type</Label>
@@ -821,7 +924,7 @@ export default function DoctorPortal() {
                                                 <Button variant="ghost" size="icon" onClick={() => setViewQrId(p.id)} title="View QR">
                                                     <QrCode className="h-4 w-4 text-blue-600" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleDeletePrescription(p.id)} title="Delete" className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                                                <Button variant="ghost" size="icon" onClick={() => setDeletingPrescriptionId(p.id)} title="Delete" className="text-red-500 hover:text-red-700 hover:bg-red-50">
                                                     <Trash className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -853,6 +956,32 @@ export default function DoctorPortal() {
                              </div>
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Prescription Confirmation Dialog */}
+            <Dialog open={!!deletingPrescriptionId} onOpenChange={(o) => !o && setDeletingPrescriptionId(null)}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <AlertTriangle className="h-5 w-5" />
+                            Delete Prescription
+                        </DialogTitle>
+                        <DialogDescription className="pt-1">
+                            Are you sure you want to delete this prescription? 
+                            <span className="block mt-2 text-xs text-gray-500">This action cannot be undone.</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 mt-4">
+                        <Button variant="outline" onClick={() => setDeletingPrescriptionId(null)}>Cancel</Button>
+                        <Button
+                            variant="outline"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => deletingPrescriptionId && handleDeletePrescription(deletingPrescriptionId)}
+                        >
+                            Yes, Delete
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
