@@ -24,8 +24,6 @@ export function ActiveConsultationCard({ appointment, onConsultationComplete }: 
         if (storedStart) {
             startTime = parseInt(storedStart);
         } else {
-            // If IN_PROGRESS but no local storage (e.g. cross device), just start counting from now?
-            // Or better, set it now so at least from now on it persists.
             localStorage.setItem(startKey, startTime.toString());
         }
 

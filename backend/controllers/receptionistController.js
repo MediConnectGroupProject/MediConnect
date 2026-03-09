@@ -94,6 +94,15 @@ export const checkInPatient = async (req, res) => {
 export const confirmAppointment = async (req, res) => {
 
     const { appointmentId } = req.params;
+
+    const appointment = await prisma.appointment.findUnique({
+        where: { appointmentId }
+    });
+
+    if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+    }
+
     const updated = await prisma.appointment.update({
         where: { appointmentId },
         data: { status: 'CONFIRMED' }
@@ -106,6 +115,15 @@ export const confirmAppointment = async (req, res) => {
 export const cancelAppointment = async (req, res) => {
 
     const { appointmentId } = req.params;
+
+    const appointment = await prisma.appointment.findUnique({
+        where: { appointmentId }
+    });
+
+    if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+    }
+
     const updated = await prisma.appointment.update({
         where: { appointmentId },
         data: { status: 'CANCELED' }
@@ -116,6 +134,15 @@ export const cancelAppointment = async (req, res) => {
 // Complete Appointment
 export const completeAppointment = async (req, res) => {
     const { appointmentId } = req.params;
+
+    const appointment = await prisma.appointment.findUnique({
+        where: { appointmentId }
+    });
+
+    if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+    }
+
     const updated = await prisma.appointment.update({
         where: { appointmentId },
         data: { status: 'COMPLETED' }
@@ -181,6 +208,14 @@ export const processPayment = async (req, res) => {
 
     const { billId } = req.params;
     const { paymentMethod } = req.body;
+
+    const bill = await prisma.bill.findUnique({
+        where: { billId }
+    });
+
+    if (!bill) {
+        return res.status(404).json({ message: 'Bill not found' });
+    }
 
     const updated = await prisma.bill.update({
         where: { billId },

@@ -95,7 +95,7 @@ export const getAppointments = async (req, res) => {
         }
 
         if (status && status !== 'ALL') {
-             whereClause.status = status;
+            whereClause.status = status;
         }
 
         const appointments = await prisma.appointment.findMany({
@@ -250,7 +250,6 @@ export const createPrescription = async (req, res) => {
         const { id: userId } = req.user; // Doctor ID
         const { patientId, appointmentId, items, notes } = req.body;
 
-        // Verify patient exists ? optional
         // Create prescription
         const prescription = await prisma.prescription.create({
             data: {
@@ -294,7 +293,6 @@ export const createPrescription = async (req, res) => {
 export const getPatientById = async (req, res) => {
 
         const { patientId } = req.params;
-        console.log(`[DEBUG] getPatientById called with ID: ${patientId}`);
 
         const patient = await prisma.patient.findUnique({
              where: { patientId },
@@ -401,7 +399,7 @@ export const getPrescriptionRequests = async (req, res) => {
 // update availability
 export const updateDoctorAvailability = async (req, res) => {
     const { id: userId } = req.user;
-    const { availability, workingHours } = req.body; // Expecting workingHours as JSON
+    const { availability, workingHours } = req.body;
 
     const doctor = await prisma.doctor.update({
         where: { doctorId: userId },
@@ -423,7 +421,6 @@ export const getDoctorAvailability = async (req, res) => {
      res.status(200).json(doctor);
 }
 
-// get all patients for selection
 // get all patients for selection
 export const getPatients = async (req, res) => {
     const patients = await prisma.patient.findMany({
