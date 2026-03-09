@@ -426,6 +426,27 @@ const getSystemReport = async (req, res) => {
             res.header('Content-Type', 'text/csv');
             res.attachment('audit_logs.csv');
             return res.send(header + rows);
+        } else if (type === 'financial') {
+            const bills = await prisma.bill.findMany({
+                orderBy: { issuedDate: 'desc' },
+                include: {
+                    patient: {
+                        select: { user: { select: { firstName: true, lastName: true, email: true } } }
+                    }
+                }
+            });
+
+            const header = "Invoice Number,Date,Type,Description,Payment Method,Amount,Status,Patient Name,Patient Email\n";
+            const rows = bills.map(b => {
+                const patientName = b.patient?.user ? `${b.patient.user.firstName} ${b.patient.user.lastName}` : 'Walk-in / N/A';
+                const patientEmail = b.patient?.user?.email || 'N/A';
+                
+                return `"${b.invoiceNumber}","${b.issuedDate.toISOString()}","${b.type}","${b.description || ''}","${b.paymentMethod || ''}","${b.amount}","${b.status}","${patientName}","${patientEmail}"`;
+            }).join("\n");
+
+            res.header('Content-Type', 'text/csv');
+            res.attachment('financial_report.csv');
+            return res.send(header + rows);
         } else {
             res.status(400).json({ message: "Invalid report type" });
         }

@@ -42,6 +42,17 @@ export const processSale = async (saleData: any) => {
     return res.json();
 };
 
+export const getInvoices = async () => {
+    const res = await fetch(`${API_URL}/invoices`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+    });
+    if (!res.ok) throw new Error('Failed to fetch invoices');
+    return res.json();
+};
+
 export const getDashboardStats = async () => {
     const res = await fetch(`${API_URL}/stats`, {
         headers: {

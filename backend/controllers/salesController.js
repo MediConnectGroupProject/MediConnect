@@ -140,3 +140,31 @@ export const processSale = async (req, res) => {
         res.status(500).json({ message: error.message || "Failed to process sale" });
     }
 };
+
+// Fetch Invoice History
+export const getInvoices = async (req, res) => {
+    try {
+        const invoices = await prisma.bill.findMany({
+            where: {
+                type: 'PHARMACY'
+            },
+            orderBy: {
+                issuedDate: 'desc'
+            },
+            include: {
+                items: {
+                    include: {
+                        medicine: {
+                            select: { name: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        res.status(200).json(invoices);
+    } catch (error) {
+        console.error("Error fetching invoices:", error);
+        res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+};

@@ -13,6 +13,7 @@ interface Medicine {
     dosage?: string | { name: string };
     price: number;
     stock: number;
+    supplierName?: string;
     batches?: any[];
 }
 
@@ -57,8 +58,11 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onEditMed
                                     <div className="font-semibold text-gray-900">
                                         {item.name} {item.strength && <span className="text-gray-500 font-normal ml-1">{item.strength}mg</span>}
                                     </div>
-                                    {item.brand && <div className="text-xs text-blue-600 mt-0.5 font-medium">{item.brand}</div>}
-                                    <div className="text-xs text-gray-500 mt-1">ID: {item.medicineId.substring(0,8)}</div>
+                                    <div className="flex flex-col mt-1 mb-1 gap-1">
+                                        {item.brand && <div className="text-xs text-blue-600 font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]" title={item.brand}>Brand: {item.brand}</div>}
+                                        {item.supplierName && <div className="text-xs text-purple-600 font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]" title={item.supplierName}>Supplier: {item.supplierName}</div>}
+                                    </div>
+                                    <div className="text-xs text-gray-500">ID: {item.medicineId.substring(0,8)}</div>
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col gap-1 items-start">

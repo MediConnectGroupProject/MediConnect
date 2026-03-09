@@ -22,7 +22,7 @@ import {
     getSuppliers,
     getInventoryAlerts
 } from '../controllers/inventoryController.js';
-import { processSale } from '../controllers/salesController.js';
+import { processSale, getInvoices } from '../controllers/salesController.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { requireRole } from '../middleware/requireRole.js';
 import { protect } from '../middleware/authMiddleware.js';
@@ -75,5 +75,6 @@ router.post('/suppliers', protect, requireRole('PHARMACIST'), asyncHandler(addSu
 
 // Sales
 router.post('/sale', protect, requireRole('PHARMACIST'), asyncHandler(processSale));
+router.get('/invoices', protect, requireRole('PHARMACIST'), asyncHandler(getInvoices));
 
 export default router;

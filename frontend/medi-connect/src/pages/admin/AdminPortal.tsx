@@ -1221,16 +1221,16 @@ function DataExportCard() {
                         </Button>
                     </div>
 
-                    <div className="p-4 border rounded-lg bg-gray-50 opacity-50 cursor-not-allowed">
+                    <div className="p-4 border rounded-lg bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-green-100 rounded-lg text-green-600">
                                 <Activity className="h-5 w-5" />
                             </div>
                             <h3 className="font-medium">Financial Report</h3>
                         </div>
-                        <p className="text-xs text-gray-500 mb-4">Revenue and billing summaries. (Coming Soon)</p>
-                        <Button variant="outline" size="sm" className="w-full" disabled>
-                             Coming Soon
+                        <p className="text-xs text-gray-500 mb-4">Complete revenue and billing summaries across all departments.</p>
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => window.open(`${import.meta.env.VITE_API_URL}/reports?type=financial`, '_blank')}>
+                             <FileText className="h-4 w-4 mr-2" /> Export CSV
                         </Button>
                     </div>
                 </div>
